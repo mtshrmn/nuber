@@ -1,0 +1,3 @@
+[submodule "rust-html2text"]
+	path = rust-html2text
+	url = https://github.com/jugglerchris/rust-html2text

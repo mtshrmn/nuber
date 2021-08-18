@@ -1,0 +1,182 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 9740d97..e48c43d 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -303,8 +303,8 @@ pub enum RenderNodeInfo {
+     Strikeout(Vec<RenderNode>),
+     /// A code region
+     Code(Vec<RenderNode>),
+-    /// An image (title)
+-    Img(String),
++    /// An image (title, src)
++    Img(String, String),
+     /// A block element with children
+     Block(Vec<RenderNode>),
+     /// A header (h1, h2, ...) with children
+@@ -351,7 +351,7 @@ impl RenderNode {
+     pub fn new(info: RenderNodeInfo) -> RenderNode {
+         RenderNode {
+             size_estimate: Cell::new(None),
+-            info: info,
++            info,
+         }
+     }
+ 
+@@ -366,7 +366,7 @@ impl RenderNode {
+ 
+         // Otherwise, make an estimate.
+         let estimate = match self.info {
+-            Text(ref t) | Img(ref t) => {
++            Text(ref t) | Img(ref t, _) => {
+                 let len = t.trim().len();
+                 SizeEstimate {
+                     size: len,
+@@ -419,7 +419,7 @@ fn precalc_size_estimate<'a>(node: &'a RenderNode) -> TreeMapResult<(), &'a Rend
+         return TreeMapResult::Nothing;
+     }
+     match node.info {
+-        Text(_) | Img(_) | Break | FragStart(_) => {
++        Text(_) | Img(_, _) | Break | FragStart(_) => {
+             let _ = node.get_size_estimate();
+             TreeMapResult::Nothing
+         }
+@@ -883,9 +883,13 @@ fn process_dom_node<'a, 'b, T: Write>(
+                     }
+                 }
+                 expanded_name!(html "em") => pending(handle, |_, cs| Some(RenderNode::new(Em(cs)))),
++                expanded_name!(html "i") => pending(handle, |_, cs| Some(RenderNode::new(Em(cs)))),
+                 expanded_name!(html "strong") => {
+                     pending(handle, |_, cs| Some(RenderNode::new(Strong(cs))))
+                 }
++                expanded_name!(html "b") => {
++                    pending(handle, |_, cs| Some(RenderNode::new(Strong(cs))))
++                }
+                 expanded_name!(html "s") => {
+                     pending(handle, |_, cs| Some(RenderNode::new(Strikeout(cs))))
+                 }
+@@ -895,14 +899,26 @@ fn process_dom_node<'a, 'b, T: Write>(
+                 expanded_name!(html "img") => {
+                     let borrowed = attrs.borrow();
+                     let mut title = None;
++                    let mut src = None;
+                     for attr in borrowed.iter() {
+-                        if &attr.name.local == "alt" {
++                        if &attr.name.local == "src" {
++                            src = Some(&*attr.value);
++                            if title.is_some() {
++                                break;
++                            }
++                        } else if &attr.name.local == "alt" {
+                             title = Some(&*attr.value);
+-                            break;
++                            if src.is_some() {
++                                break;
++                            }
+                         }
+                     }
+-                    if let Some(title) = title {
+-                        Finished(RenderNode::new(Img(title.into())))
++                    if let Some(src) = src {
++                        if let Some(title) = title {
++                            Finished(RenderNode::new(Img(title.into(), src.into())))
++                        } else {
++                            Finished(RenderNode::new(Img(String::new(), src.into())))
++                        }
+                     } else {
+                         Nothing
+                     }
+@@ -1143,8 +1159,8 @@ fn do_render_node<'a, 'b, T: Write, R: Renderer>(
+                 Some(None)
+             })
+         }
+-        Img(title) => {
+-            builder.add_image(&title);
++        Img(title, src) => {
++            builder.add_image(&title, &src);
+             Finished(None)
+         }
+         Block(children) => {
+diff --git a/src/render/mod.rs b/src/render/mod.rs
+index 8b9e25d..cc1a453 100644
+--- a/src/render/mod.rs
++++ b/src/render/mod.rs
+@@ -97,7 +97,7 @@ pub trait Renderer {
+     fn end_code(&mut self);
+ 
+     /// Add an image
+-    fn add_image(&mut self, title: &str);
++    fn add_image(&mut self, title: &str, src: &str);
+ 
+     /// Get prefix string of header in specific level.
+     fn header_prefix(&mut self, level: usize) -> String;
+diff --git a/src/render/text_renderer.rs b/src/render/text_renderer.rs
+index ffaeb30..474b249 100644
+--- a/src/render/text_renderer.rs
++++ b/src/render/text_renderer.rs
+@@ -490,7 +490,7 @@ pub trait TextDecorator {
+     fn decorate_preformat_cont(&mut self) -> Self::Annotation;
+ 
+     /// Return an annotation and rendering prefix for a link.
+-    fn decorate_image(&mut self, title: &str) -> (String, Self::Annotation);
++    fn decorate_image(&mut self, title: &str, src: &str) -> (String, Self::Annotation);
+ 
+     /// Return prefix string of header in specific level.
+     fn header_prefix(&mut self, level: usize) -> String;
+@@ -1203,8 +1203,8 @@ impl<D: TextDecorator> Renderer for TextRenderer<D> {
+             self.ann_stack.pop();
+         }
+     }
+-    fn add_image(&mut self, title: &str) {
+-        if let Some((s, tag)) = self.decorator.as_mut().map(|d| d.decorate_image(title)) {
++    fn add_image(&mut self, title: &str, src: &str) {
++        if let Some((s, tag)) = self.decorator.as_mut().map(|d| d.decorate_image(title, src)) {
+             self.ann_stack.push(tag);
+             self.add_inline_text(&s);
+             self.ann_stack.pop();
+@@ -1234,7 +1234,7 @@ impl<D: TextDecorator> Renderer for TextRenderer<D> {
+             "".to_owned()
+         }
+     }
+-    
++
+     fn ordered_item_prefix(&mut self, i: i64) -> String {
+         if let Some(d) = self.decorator.as_mut() {
+             d.ordered_item_prefix(i)
+@@ -1320,7 +1320,7 @@ impl TextDecorator for PlainDecorator {
+         ()
+     }
+ 
+-    fn decorate_image(&mut self, title: &str) -> (String, Self::Annotation) {
++    fn decorate_image(&mut self, title: &str, _src: &str) -> (String, Self::Annotation) {
+         (format!("[{}]", title), ())
+     }
+ 
+@@ -1416,7 +1416,7 @@ impl TextDecorator for TrivialDecorator {
+         ()
+     }
+ 
+-    fn decorate_image(&mut self, title: &str) -> (String, Self::Annotation) {
++    fn decorate_image(&mut self, title: &str, _src: &str) -> (String, Self::Annotation) {
+         // FIXME: this should surely be the alt text, not the title text
+         (title.to_string(), ())
+     }
+@@ -1460,7 +1460,7 @@ pub enum RichAnnotation {
+     /// A link with the target.
+     Link(String),
+     /// An image (attached to the title text)
+-    Image,
++    Image(String),
+     /// Emphasised text, which might be rendered in bold or another colour.
+     Emphasis,
+     /// Strong text, which might be rendered in bold or another colour.
+@@ -1538,8 +1538,8 @@ impl TextDecorator for RichDecorator {
+         RichAnnotation::Preformat(true)
+     }
+ 
+-    fn decorate_image(&mut self, title: &str) -> (String, Self::Annotation) {
+-        (title.to_string(), RichAnnotation::Image)
++    fn decorate_image(&mut self, title: &str, src: &str) -> (String, Self::Annotation) {
++        (title.to_string(), RichAnnotation::Image(src.to_string()))
+     }
+ 
+     fn header_prefix(&mut self, level: usize) -> String {

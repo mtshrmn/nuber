@@ -1,0 +1,22 @@
+[package]
+name = "nuber"
+version = "0.1.0"
+authors = ["Moshe Sherman <moshesher1998@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "nuber"
+crate-type = ["dylib"]
+
+[dependencies]
+epub = "1.2.2"
+html2text = { path = "rust-html2text/" }
+enumset = "1.0.7"
+image = "0.23.14"
+libc = "0.2.101"
+tempfile = "3.2.0"
+
+[dependencies.pyo3]
+version = "0.14.3"
+features = ["extension-module"]
+
