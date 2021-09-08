@@ -11,7 +11,7 @@ class Reader:
         curses.curs_set(0)
 
         self.y_offset = 0
-        self.placements = []
+        self.placements = {}
 
         self.book = Book(path)
 
@@ -26,11 +26,14 @@ class Reader:
                 if info := element.image_info:
                     if element.text.startswith("S"):
                         image_id = f"{current_pos}{line_num}{info.path}"
-                        image = canvas.create_placement(image_id,
-                                x=current_pos, y=line_num, width=info.size[0])
+                        try:
+                            image = canvas.create_placement(image_id,
+                                    x=current_pos, y=line_num, width=info.size[0])
+                            self.placements[image_id] = line_num, image
+                        except ValueError:
+                            image = self.placements[image_id][1]
                         image.path = info.path
                         image.visibility = ueberzug.Visibility.VISIBLE
-                        self.placements.append((line_num, image))
                     current_pos += len(element.text)
                     continue
                 current_pos += self.addstr(line_num, current_pos, element.text, element.style)
@@ -68,6 +71,10 @@ class Reader:
             if self.book.next_chapter():
                 self.y_offset = 0
                 self.render_chapter(canvas)
+        elif key == ord("h"):
+            if self.book.previous_chapter():
+                self.y_offset = 0
+                self.render_chapter(canvas)
         elif key == ord("q"):
             curses.endwin()
             exit(0)
@@ -75,18 +82,17 @@ class Reader:
     def clear(self, canvas: ueberzug.Canvas) -> None:
         try:
             self.pad.clear()
-            with canvas.lazy_drawing:
-                for _, placement in self.placements:
+            with canvas.synchronous_lazy_drawing:
+                for _, placement in self.placements.values():
                     placement.visibility = ueberzug.Visibility.INVISIBLE
             self.redraw(canvas)
-            self.placements = []
         except AttributeError:
             pass
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
         self.pad.refresh(self.y_offset, 0, 0, 0, self.rows - 1, self.cols)
         with canvas.synchronous_lazy_drawing:
-            for y, placement in self.placements:
+            for y, placement in self.placements.values():
                 placement.y = y - self.y_offset
 
     @ueberzug.Canvas()

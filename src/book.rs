@@ -64,6 +64,10 @@ impl Book {
         self.book.go_next().is_ok()
     }
 
+    fn previous_chapter(&mut self) -> bool {
+        self.book.go_prev().is_ok()
+    }
+
     fn get_current_str(&mut self) -> String {
         self.book.get_current_str().unwrap()
     }
