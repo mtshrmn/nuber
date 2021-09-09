@@ -97,7 +97,7 @@ class Reader:
                     self.precise_offset = 0
                     self.offsets.append(0)
                 finally:
-                    self.rounded_offset = self.precise_offset // self.rows
+                    self.rounded_offset = self.precise_offset // self.cols
                 self.render_chapter(canvas)
         elif key == ord("h"):
             if self.book.previous_chapter():
@@ -106,7 +106,7 @@ class Reader:
                 self.clear(canvas)
                 self.redraw(canvas)
                 self.precise_offset = self.offsets[self.chapter_idx]
-                self.rounded_offset = self.precise_offset // self.rows
+                self.rounded_offset = self.precise_offset // self.cols
                 self.render_chapter(canvas)
         elif key == curses.KEY_RESIZE:
             previous_cols = self.cols
