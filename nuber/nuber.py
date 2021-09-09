@@ -1,23 +1,39 @@
 import curses
+import json
+import appdirs
+import os
 import ueberzug.lib.v0 as ueberzug
 from target.release.libnuber import Book
 
 
 class Reader:
     def __init__(self, path: str) -> None:
+        self.path = path
         self.stdscr: curses.window = curses.initscr()
         self.rows, self.cols = self.stdscr.getmaxyx()
+        self.cahce_dir = os.path.join(appdirs.user_cache_dir(), "nuber")
+        if not os.path.exists(self.cahce_dir):
+            os.mkdir(self.cahce_dir)
+        self.state_file = os.path.join(appdirs.user_cache_dir(), "nuber", "state.json")
         curses.noecho()
         curses.curs_set(0)
+        self.book = Book(path)
 
-        self.rounded_offset = 0
-        self.precise_offset = 0
         self.chapter_idx = 0
-        self.offsets = [self.precise_offset]
+        self.offsets = [0] * self.book.get_num_chapters()
         self.placements = {}
         self.current_chapter_placements = []
 
-        self.book = Book(path)
+        if os.path.exists(self.state_file):
+            with open(self.state_file, "r") as state_file:
+                states = json.loads(state_file.read())
+                state = states[self.path]
+                self.offsets = state["offsets"]
+                self.chapter_idx = state["chapter_idx"]
+                self.book.set_current_chapter(self.chapter_idx)
+
+        self.precise_offset = self.offsets[self.chapter_idx]
+        self.rounded_offset = self.precise_offset // self.cols
 
     def render_chapter(self, canvas: ueberzug.Canvas) -> None:
         chapter = self.book.render_current_chapter()
@@ -91,13 +107,8 @@ class Reader:
                 self.chapter_idx += 1
                 self.clear(canvas)
                 self.redraw(canvas)
-                try:
-                    self.precise_offset = self.offsets[self.chapter_idx]
-                except IndexError:
-                    self.precise_offset = 0
-                    self.offsets.append(0)
-                finally:
-                    self.rounded_offset = self.precise_offset // self.cols
+                self.precise_offset = self.offsets[self.chapter_idx]
+                self.rounded_offset = self.precise_offset // self.cols
                 self.render_chapter(canvas)
         elif key == ord("h"):
             if self.book.previous_chapter():
@@ -109,15 +120,26 @@ class Reader:
                 self.rounded_offset = self.precise_offset // self.cols
                 self.render_chapter(canvas)
         elif key == curses.KEY_RESIZE:
-            previous_cols = self.cols
             self.rows, self.cols = self.stdscr.getmaxyx()
             self.book.update_term_info()
             self.clear(canvas)
-            # make sure that: precise_offset ∈ [0, (chapter_rows - rows) * cols]
-            self.precise_offset = max(0, min(self.precise_offset * previous_cols // self.cols, (self.chapter_rows - self.rows) * self.cols))
             self.rounded_offset = self.precise_offset // self.cols
             self.render_chapter(canvas)
         elif key == ord("q"):
+            self.offsets[self.chapter_idx] = self.precise_offset
+            states = {}
+            if os.path.exists(self.state_file):
+                with open(self.state_file, "r") as state_file:
+                    states = json.loads(state_file.read())
+
+            state = {
+                    "offsets": self.offsets,
+                    "chapter_idx": self.chapter_idx,
+                    }
+
+            states[self.path] = state
+            with open(self.state_file, "w") as state_file:
+                state_file.write(json.dumps(states))
             curses.endwin()
             exit(0)
 

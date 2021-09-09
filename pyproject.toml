@@ -8,6 +8,7 @@ authors = ["Moshe Sherman <moshesher1998@gmail.com>"]
 python = "^3.9"
 ueberzug = "^18.1.9"
 Pillow = "^8.3.1"
+appdirs = "^1.4.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

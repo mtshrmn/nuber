@@ -72,6 +72,14 @@ impl Book {
         self.book.get_current_str().unwrap()
     }
 
+    fn set_current_chapter(&mut self, chapter: usize) -> bool {
+        self.book.set_current_page(chapter).is_ok()
+    }
+
+    fn get_num_chapters(&mut self) -> usize {
+        self.book.get_num_pages()
+    }
+
     fn render_current_chapter(&mut self) -> Vec<Vec<Element>> {
         let mut doc = Vec::new();
         let rich_converter = RichConverter;
