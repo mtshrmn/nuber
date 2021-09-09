@@ -10,14 +10,15 @@ class Reader:
         curses.noecho()
         curses.curs_set(0)
 
-        self.y_offset = 0
+        self.current_y_offset = 0
+        self.chapter_idx = 0
+        self.y_offsets = [self.current_y_offset]
         self.placements = {}
         self.current_chapter_placements = []
 
         self.book = Book(path)
 
     def render_chapter(self, canvas: ueberzug.Canvas) -> None:
-        self.clear(canvas)
         chapter = self.book.render_current_chapter()
         self.chapter_rows = len(chapter)
         self.pad: curses.window = curses.newpad(self.chapter_rows, self.cols)
@@ -43,7 +44,7 @@ class Reader:
         self.redraw(canvas)
 
     def determine_visibility(self, y: int, h: int) -> ueberzug.Visibility:
-        y_pos = y - self.y_offset
+        y_pos = y - self.current_y_offset
         padding = 1
         if y_pos + h + padding < 0:
             return ueberzug.Visibility.INVISIBLE
@@ -71,21 +72,33 @@ class Reader:
 
     def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
         if key == ord("j"):
-            if self.y_offset < self.chapter_rows - self.rows:
-                self.y_offset += 1
+            if self.current_y_offset < self.chapter_rows - self.rows:
+                self.current_y_offset += 1
                 self.redraw(canvas)
         elif key == ord("k"):
-            if self.y_offset > 0:
-                self.y_offset -= 1
+            if self.current_y_offset > 0:
+                self.current_y_offset -= 1
                 self.redraw(canvas)
         elif key == ord("l"):
             if self.book.next_chapter():
-                self.y_offset = 0
+                self.y_offsets[self.chapter_idx] = self.current_y_offset
+                self.chapter_idx += 1
+                self.clear(canvas)
+                try:
+                    self.current_y_offset = self.y_offsets[self.chapter_idx]
+                except IndexError:
+                    self.current_y_offset = 0
+                    self.y_offsets.append(0)
                 self.render_chapter(canvas)
+
         elif key == ord("h"):
             if self.book.previous_chapter():
-                self.y_offset = 0
+                self.y_offsets[self.chapter_idx] = self.current_y_offset
+                self.chapter_idx -= 1
+                self.clear(canvas)
+                self.current_y_offset = self.y_offsets[self.chapter_idx]
                 self.render_chapter(canvas)
+
         elif key == ord("q"):
             curses.endwin()
             exit(0)
@@ -102,12 +115,12 @@ class Reader:
             pass
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
-        self.pad.refresh(self.y_offset, 0, 0, 0, self.rows - 1, self.cols)
+        self.pad.refresh(self.current_y_offset, 0, 0, 0, self.rows - 1, self.cols)
         with canvas.synchronous_lazy_drawing:
             for initial_y, placement in self.current_chapter_placements:
                 visibility = self.determine_visibility(initial_y, placement.height)
                 if visibility == ueberzug.Visibility.VISIBLE:
-                    placement.y = initial_y - self.y_offset
+                    placement.y = initial_y - self.current_y_offset
                 placement.visibility = visibility
 
     @ueberzug.Canvas()
