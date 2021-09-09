@@ -10,9 +10,10 @@ class Reader:
         curses.noecho()
         curses.curs_set(0)
 
-        self.current_y_offset = 0
+        self.rounded_offset = 0
+        self.precise_offset = 0
         self.chapter_idx = 0
-        self.y_offsets = [self.current_y_offset]
+        self.offsets = [self.precise_offset]
         self.placements = {}
         self.current_chapter_placements = []
 
@@ -34,6 +35,9 @@ class Reader:
                             self.placements[image_id] = image
                         except ValueError:
                             image = self.placements[image_id]
+                            image.x = current_pos
+                            image.y = line_num
+                            image.width, image.height = info.size
                         self.current_chapter_placements.append((line_num,image))
                         image.path = info.path
                         image.visibility = ueberzug.Visibility.VISIBLE
@@ -44,7 +48,7 @@ class Reader:
         self.redraw(canvas)
 
     def determine_visibility(self, y: int, h: int) -> ueberzug.Visibility:
-        y_pos = y - self.current_y_offset
+        y_pos = y - self.rounded_offset
         padding = 1
         if y_pos + h + padding < 0:
             return ueberzug.Visibility.INVISIBLE
@@ -72,33 +76,47 @@ class Reader:
 
     def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
         if key == ord("j"):
-            if self.current_y_offset < self.chapter_rows - self.rows:
-                self.current_y_offset += 1
+            if self.rounded_offset < self.chapter_rows - self.rows:
+                self.precise_offset += self.cols
+                self.rounded_offset = self.precise_offset // self.cols
                 self.redraw(canvas)
         elif key == ord("k"):
-            if self.current_y_offset > 0:
-                self.current_y_offset -= 1
+            if self.rounded_offset > 0:
+                self.precise_offset -= self.cols
+                self.rounded_offset = self.precise_offset // self.cols
                 self.redraw(canvas)
         elif key == ord("l"):
             if self.book.next_chapter():
-                self.y_offsets[self.chapter_idx] = self.current_y_offset
+                self.offsets[self.chapter_idx] = self.precise_offset
                 self.chapter_idx += 1
                 self.clear(canvas)
+                self.redraw(canvas)
                 try:
-                    self.current_y_offset = self.y_offsets[self.chapter_idx]
+                    self.precise_offset = self.offsets[self.chapter_idx]
                 except IndexError:
-                    self.current_y_offset = 0
-                    self.y_offsets.append(0)
+                    self.precise_offset = 0
+                    self.offsets.append(0)
+                finally:
+                    self.rounded_offset = self.precise_offset // self.rows
                 self.render_chapter(canvas)
-
         elif key == ord("h"):
             if self.book.previous_chapter():
-                self.y_offsets[self.chapter_idx] = self.current_y_offset
+                self.offsets[self.chapter_idx] = self.precise_offset
                 self.chapter_idx -= 1
                 self.clear(canvas)
-                self.current_y_offset = self.y_offsets[self.chapter_idx]
+                self.redraw(canvas)
+                self.precise_offset = self.offsets[self.chapter_idx]
+                self.rounded_offset = self.precise_offset // self.rows
                 self.render_chapter(canvas)
-
+        elif key == curses.KEY_RESIZE:
+            previous_cols = self.cols
+            self.rows, self.cols = self.stdscr.getmaxyx()
+            self.book.update_term_info()
+            self.clear(canvas)
+            # make sure that: precise_offset ∈ [0, (chapter_rows - rows) * cols]
+            self.precise_offset = max(0, min(self.precise_offset * previous_cols // self.cols, (self.chapter_rows - self.rows) * self.cols))
+            self.rounded_offset = self.precise_offset // self.cols
+            self.render_chapter(canvas)
         elif key == ord("q"):
             curses.endwin()
             exit(0)
@@ -110,17 +128,16 @@ class Reader:
                 for _, placement in self.current_chapter_placements:
                     placement.visibility = ueberzug.Visibility.INVISIBLE
             self.current_chapter_placements = []
-            self.redraw(canvas)
         except AttributeError:
             pass
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
-        self.pad.refresh(self.current_y_offset, 0, 0, 0, self.rows - 1, self.cols)
+        self.pad.refresh(self.rounded_offset, 0, 0, 0, self.rows - 1, self.cols)
         with canvas.synchronous_lazy_drawing:
             for initial_y, placement in self.current_chapter_placements:
                 visibility = self.determine_visibility(initial_y, placement.height)
                 if visibility == ueberzug.Visibility.VISIBLE:
-                    placement.y = initial_y - self.current_y_offset
+                    placement.y = initial_y - self.rounded_offset
                 placement.visibility = visibility
 
     @ueberzug.Canvas()
