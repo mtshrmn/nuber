@@ -12,6 +12,7 @@ class Reader:
 
         self.y_offset = 0
         self.placements = {}
+        self.current_chapter_placements = []
 
         self.book = Book(path)
 
@@ -28,10 +29,11 @@ class Reader:
                         image_id = f"{current_pos}{line_num}{info.path}"
                         try:
                             image = canvas.create_placement(image_id,
-                                    x=current_pos, y=line_num, width=info.size[0])
-                            self.placements[image_id] = line_num, image
+                                    x=current_pos, y=line_num, height=info.size[1])
+                            self.placements[image_id] = image
                         except ValueError:
-                            image = self.placements[image_id][1]
+                            image = self.placements[image_id]
+                        self.current_chapter_placements.append((line_num,image))
                         image.path = info.path
                         image.visibility = ueberzug.Visibility.VISIBLE
                     current_pos += len(element.text)
@@ -39,6 +41,15 @@ class Reader:
                 current_pos += self.addstr(line_num, current_pos, element.text, element.style)
 
         self.redraw(canvas)
+
+    def determine_visibility(self, y: int, h: int) -> ueberzug.Visibility:
+        y_pos = y - self.y_offset
+        padding = 1
+        if y_pos + h + padding < 0:
+            return ueberzug.Visibility.INVISIBLE
+        if y_pos - padding > self.rows:
+            return ueberzug.Visibility.INVISIBLE
+        return ueberzug.Visibility.VISIBLE
 
     def addstr(self, y: int, x: int, text: str, styles: list) -> int:
         formatting = curses.A_NORMAL
@@ -83,8 +94,9 @@ class Reader:
         try:
             self.pad.clear()
             with canvas.synchronous_lazy_drawing:
-                for _, placement in self.placements.values():
+                for _, placement in self.current_chapter_placements:
                     placement.visibility = ueberzug.Visibility.INVISIBLE
+            self.current_chapter_placements = []
             self.redraw(canvas)
         except AttributeError:
             pass
@@ -92,8 +104,11 @@ class Reader:
     def redraw(self, canvas: ueberzug.Canvas) -> None:
         self.pad.refresh(self.y_offset, 0, 0, 0, self.rows - 1, self.cols)
         with canvas.synchronous_lazy_drawing:
-            for y, placement in self.placements.values():
-                placement.y = y - self.y_offset
+            for initial_y, placement in self.current_chapter_placements:
+                visibility = self.determine_visibility(initial_y, placement.height)
+                if visibility == ueberzug.Visibility.VISIBLE:
+                    placement.y = initial_y - self.y_offset
+                placement.visibility = visibility
 
     @ueberzug.Canvas()
     def loop(self, canvas: ueberzug.Canvas) -> None:
