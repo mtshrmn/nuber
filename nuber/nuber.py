@@ -90,58 +90,74 @@ class Reader:
         except curses.error:
             return 0
 
-    def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
-        if key == ord("j"):
-            if self.rounded_offset < self.chapter_rows - self.rows:
-                self.precise_offset += self.cols
-                self.rounded_offset = self.precise_offset // self.cols
-                self.redraw(canvas)
-        elif key == ord("k"):
-            if self.rounded_offset > 0:
-                self.precise_offset -= self.cols
-                self.rounded_offset = self.precise_offset // self.cols
-                self.redraw(canvas)
-        elif key == ord("l"):
-            if self.book.next_chapter():
-                self.offsets[self.chapter_idx] = self.precise_offset
-                self.chapter_idx += 1
-                self.clear(canvas)
-                self.redraw(canvas)
-                self.precise_offset = self.offsets[self.chapter_idx]
-                self.rounded_offset = self.precise_offset // self.cols
-                self.render_chapter(canvas)
-        elif key == ord("h"):
-            if self.book.previous_chapter():
-                self.offsets[self.chapter_idx] = self.precise_offset
-                self.chapter_idx -= 1
-                self.clear(canvas)
-                self.redraw(canvas)
-                self.precise_offset = self.offsets[self.chapter_idx]
-                self.rounded_offset = self.precise_offset // self.cols
-                self.render_chapter(canvas)
-        elif key == curses.KEY_RESIZE:
-            self.rows, self.cols = self.stdscr.getmaxyx()
-            self.book.update_term_info()
-            self.clear(canvas)
-            self.rounded_offset = self.precise_offset // self.cols
-            self.render_chapter(canvas)
-        elif key == ord("q"):
+    def update_offset(self, offset: int) -> None:
+        self.precise_offset = offset
+        self.rounded_offset = self.precise_offset // self.cols
+
+    def action_scroll_down(self, canvas: ueberzug.Canvas) -> None:
+        if self.rounded_offset < self.chapter_rows - self.rows:
+            self.update_offset(self.precise_offset + self.cols)
+            self.redraw(canvas)
+
+    def action_scroll_up(self, canvas: ueberzug.Canvas) -> None:
+        if self.rounded_offset > 0:
+            self.update_offset(self.precise_offset - self.cols)
+            self.redraw(canvas)
+
+    def action_next_chapter(self, canvas: ueberzug.Canvas) -> None:
+        if self.book.next_chapter():
             self.offsets[self.chapter_idx] = self.precise_offset
-            states = {}
-            if os.path.exists(self.state_file):
-                with open(self.state_file, "r") as state_file:
-                    states = json.loads(state_file.read())
+            self.chapter_idx += 1
+            self.clear(canvas)
+            self.redraw(canvas)
+            self.update_offset(self.offsets[self.chapter_idx])
+            self.render_chapter(canvas)
 
-            state = {
-                    "offsets": self.offsets,
-                    "chapter_idx": self.chapter_idx,
-                    }
+    def action_previous_chapter(self, canvas: ueberzug.Canvas) -> None:
+        if self.book.previous_chapter():
+            self.offsets[self.chapter_idx] = self.precise_offset
+            self.chapter_idx -= 1
+            self.clear(canvas)
+            self.redraw(canvas)
+            self.update_offset(self.offsets[self.chapter_idx])
+            self.render_chapter(canvas)
 
-            states[self.path] = state
-            with open(self.state_file, "w") as state_file:
-                state_file.write(json.dumps(states))
-            curses.endwin()
-            exit(0)
+    def action_quit(self, _: ueberzug.Canvas) -> None:
+        self.offsets[self.chapter_idx] = self.precise_offset
+        states = {}
+        if os.path.exists(self.state_file):
+            with open(self.state_file, "r") as state_file:
+                states = json.loads(state_file.read())
+
+        states[self.path] = {
+                "offsets": self.offsets,
+                "chapter_idx": self.chapter_idx,
+                }
+
+        with open(self.state_file, "w") as state_file:
+            state_file.write(json.dumps(states))
+        curses.endwin()
+        exit(0)
+
+    def action_resize(self, canvas: ueberzug.Canvas) -> None:
+        self.rows, self.cols = self.stdscr.getmaxyx()
+        self.book.update_term_info()
+        self.clear(canvas)
+        self.rounded_offset = self.precise_offset // self.cols
+        self.render_chapter(canvas)
+
+
+    def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
+        keys = {
+                ord("h"): self.action_previous_chapter,
+                ord("j"): self.action_scroll_down,
+                ord("k"): self.action_scroll_up,
+                ord("l"): self.action_next_chapter,
+                ord("q"): self.action_quit,
+                curses.KEY_RESIZE: self.action_resize,
+                }
+
+        keys[key](canvas)
 
     def clear(self, canvas: ueberzug.Canvas) -> None:
         try:
