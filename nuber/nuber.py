@@ -3,7 +3,7 @@ import json
 import appdirs
 import os
 import ueberzug.lib.v0 as ueberzug
-from target.release.libnuber import Book
+from target.release.libnuber import Book, Image
 
 
 class Reader:
@@ -32,8 +32,18 @@ class Reader:
                 self.chapter_idx = state["chapter_idx"]
                 self.book.set_current_chapter(self.chapter_idx)
 
-        self.precise_offset = self.offsets[self.chapter_idx]
-        self.rounded_offset = self.precise_offset // self.cols
+        self.update_offset(self.offsets[self.chapter_idx])
+
+    def add_image(self, canvas: ueberzug.Canvas, position: tuple[int, int], info: Image) -> None:
+        img_id = f"{position[0]}{position[1]}{info.path}"
+        if img_id in self.placements:
+            placement = self.placements[img_id]
+        else:
+            placement = canvas.create_placement(img_id,
+                    x=position[0], y=position[1], height=info.size[1])
+            placement.path = info.path
+            self.placements[img_id] = placement
+        self.current_chapter_placements.append((position[1], placement))
 
     def render_chapter(self, canvas: ueberzug.Canvas) -> None:
         chapter = self.book.render_current_chapter()
@@ -44,19 +54,7 @@ class Reader:
             for element in elements:
                 if info := element.image_info:
                     if element.text.startswith("S"):
-                        image_id = f"{current_pos}{line_num}{info.path}"
-                        try:
-                            image = canvas.create_placement(image_id,
-                                    x=current_pos, y=line_num, height=info.size[1])
-                            self.placements[image_id] = image
-                        except ValueError:
-                            image = self.placements[image_id]
-                            image.x = current_pos
-                            image.y = line_num
-                            image.width, image.height = info.size
-                        self.current_chapter_placements.append((line_num,image))
-                        image.path = info.path
-                        image.visibility = ueberzug.Visibility.VISIBLE
+                        self.add_image(canvas, (current_pos, line_num), info)
                     current_pos += len(element.text)
                     continue
                 current_pos += self.addstr(line_num, current_pos, element.text, element.style)
