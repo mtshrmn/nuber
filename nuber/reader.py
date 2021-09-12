@@ -42,10 +42,11 @@ class Reader:
         if img_id in self.placements:
             placement = self.placements[img_id]
         else:
-            placement = canvas.create_placement(img_id,
-                    x=position[0], y=position[1], height=info.size[1])
+            placement = canvas.create_placement(img_id)
             placement.path = info.path
             self.placements[img_id] = placement
+        placement.x, placement.y = position
+        placement.width, placement.height = info.size
         self.current_chapter_placements.append((position[1], placement))
 
     def render_chapter(self, canvas: ueberzug.Canvas) -> None:
