@@ -3,7 +3,7 @@ import json
 import appdirs
 import os
 import ueberzug.lib.v0 as ueberzug
-from target.release.libnuber import Book, Image
+from .rust_module.nuber import Book, Image
 
 
 class Reader:

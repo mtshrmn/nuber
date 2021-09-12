@@ -1,8 +1,11 @@
-from .nuber import Reader
+from .reader import Reader
+import click
 
 __version__ = '0.1.0'
 
-def main():
-    reader = Reader("/home/suerflowz/documents/literature/86--EIGHTY-SIX [Yen Press] [LuCaZ]/86--EIGHTY-SIX v01 [Yen Press] [LuCaZ].epub")
+@click.command()
+@click.argument("book", type=click.Path(exists=True))
+def main(book):
+    reader = Reader(click.format_filename(book))
 
-    reader.loop()
+    reader.loop() # type: ignore

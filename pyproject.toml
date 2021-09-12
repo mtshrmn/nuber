@@ -1,21 +1,27 @@
+[project]
+name = "nuber"
+
 [tool.poetry]
 name = "nuber"
 version = "0.1.0"
-description = ""
-authors = ["Moshe Sherman <moshesher1998@gmail.com>"]
+description = "epub terminal reader with inline images"
+authors = ["Moshe Sherman <mtshrmn@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
 ueberzug = "^18.1.9"
-Pillow = "^8.3.1"
 appdirs = "^1.4.4"
-
-[tool.poetry.dev-dependencies]
-pytest = "^5.2"
+click = "^8.0.1"
 
 [tool.poetry.scripts]
-app = "nuber:main"
+nuber = "nuber:main"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "maturin>=0.11,<0.12"]
+build-backend = "maturin"
+
+[tool.maturin]
+compatibility = "Linux"
+
+[project.scripts]
+nuber = "nuber:main"
