@@ -27,10 +27,13 @@ class Reader:
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as state_file:
                 states = json.loads(state_file.read())
-                state = states[self.path]
-                self.offsets = state["offsets"]
-                self.chapter_idx = state["chapter_idx"]
-                self.book.set_current_chapter(self.chapter_idx)
+                try:
+                    state = states[self.path]
+                    self.offsets = state["offsets"]
+                    self.chapter_idx = state["chapter_idx"]
+                    self.book.set_current_chapter(self.chapter_idx)
+                except KeyError:
+                    pass
 
         self.update_offset(self.offsets[self.chapter_idx])
 
