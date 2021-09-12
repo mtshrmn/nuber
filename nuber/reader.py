@@ -95,6 +95,10 @@ class Reader:
         self.precise_offset = offset
         self.rounded_offset = self.precise_offset // self.cols
 
+    @staticmethod
+    def action_noop(_: ueberzug.Canvas) -> None:
+        pass
+
     def action_scroll_down(self, canvas: ueberzug.Canvas) -> None:
         if self.rounded_offset < self.chapter_rows - self.rows:
             self.update_offset(self.precise_offset + self.cols)
@@ -158,7 +162,8 @@ class Reader:
                 curses.KEY_RESIZE: self.action_resize,
                 }
 
-        keys[key](canvas)
+        action = keys.get(key, self.action_noop)
+        action(canvas)
 
     def clear(self, canvas: ueberzug.Canvas) -> None:
         try:
