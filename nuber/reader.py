@@ -146,9 +146,11 @@ class Reader:
         exit(0)
 
     def action_resize(self, canvas: ueberzug.Canvas) -> None:
+        self.clear(canvas)
+        self.cols = self.stdscr.getmaxyx()[1] - 1
+        self.redraw(canvas)
         self.rows, self.cols = self.stdscr.getmaxyx()
         self.book.update_term_info()
-        self.clear(canvas)
         self.rounded_offset = self.precise_offset // self.cols
         self.render_chapter(canvas)
 
