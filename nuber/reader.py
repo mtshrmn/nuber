@@ -19,23 +19,25 @@ class Reader:
         curses.curs_set(0)
         self.book = Book(path)
 
+        self.offset = 0
+        self.current_position = 0
         self.chapter_idx = 0
-        self.offsets = [0] * self.book.get_num_chapters()
+        self.positions = [0] * self.book.get_num_chapters()
         self.placements = {}
         self.current_chapter_placements = []
+        self.word_count_per_line = []
 
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as state_file:
                 states = json.loads(state_file.read())
                 try:
                     state = states[self.path]
-                    self.offsets = state["offsets"]
+                    self.positions = state["positions"]
                     self.chapter_idx = state["chapter_idx"]
+                    self.current_position = self.positions[self.chapter_idx]
                     self.book.set_current_chapter(self.chapter_idx)
                 except KeyError:
                     pass
-
-        self.update_offset(self.offsets[self.chapter_idx])
 
     def add_image(self, canvas: ueberzug.Canvas, position: tuple[int, int], info: Image) -> None:
         img_id = f"{position[0]}{position[1]}{info.path}"
@@ -51,10 +53,12 @@ class Reader:
 
     def render_chapter(self, canvas: ueberzug.Canvas) -> None:
         chapter = self.book.render_current_chapter()
-        self.chapter_rows = len(chapter)
+        self.chapter_rows = max(self.rows, len(chapter))
         self.pad: curses.window = curses.newpad(self.chapter_rows, self.cols)
+        self.word_count_per_line = []
         for line_num, elements in enumerate(chapter):
             current_pos = 0
+            word_count = 0
             for element in elements:
                 if info := element.image_info:
                     if element.text.startswith("S"):
@@ -62,11 +66,11 @@ class Reader:
                     current_pos += len(element.text)
                     continue
                 current_pos += self.addstr(line_num, current_pos, element.text, element.style)
-
-        self.redraw(canvas)
+                word_count += len(element.text.split())
+            self.word_count_per_line.append(word_count)
 
     def determine_visibility(self, y: int, h: int) -> ueberzug.Visibility:
-        y_pos = y - self.rounded_offset
+        y_pos = y - self.offset
         padding = 1
         if y_pos + h + padding < 0:
             return ueberzug.Visibility.INVISIBLE
@@ -92,51 +96,58 @@ class Reader:
         except curses.error:
             return 0
 
-    def update_offset(self, offset: int) -> None:
-        self.precise_offset = offset
-        self.rounded_offset = self.precise_offset // self.cols
+    def update_offset(self) -> None:
+        self.offset = 0
+        while self.current_position > sum(self.word_count_per_line[:self.offset]):
+            self.offset += 1
 
     @staticmethod
     def action_noop(_: ueberzug.Canvas) -> None:
         pass
 
     def action_scroll_down(self, canvas: ueberzug.Canvas) -> None:
-        if self.rounded_offset < self.chapter_rows - self.rows:
-            self.update_offset(self.precise_offset + self.cols)
+        if self.offset < self.chapter_rows - self.rows:
+            self.current_position += self.word_count_per_line[self.offset]
+            self.offset += 1
             self.redraw(canvas)
 
     def action_scroll_up(self, canvas: ueberzug.Canvas) -> None:
-        if self.rounded_offset > 0:
-            self.update_offset(self.precise_offset - self.cols)
+        if self.offset > 0:
+            self.current_position -= self.word_count_per_line[self.offset]
+            self.offset -= 1
             self.redraw(canvas)
 
     def action_next_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.next_chapter():
-            self.offsets[self.chapter_idx] = self.precise_offset
+            self.positions[self.chapter_idx] = self.current_position
             self.chapter_idx += 1
             self.clear(canvas)
             self.redraw(canvas)
-            self.update_offset(self.offsets[self.chapter_idx])
+            self.current_position = self.positions[self.chapter_idx]
             self.render_chapter(canvas)
+            self.update_offset()
+            self.redraw(canvas)
 
     def action_previous_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.previous_chapter():
-            self.offsets[self.chapter_idx] = self.precise_offset
+            self.positions[self.chapter_idx] = self.current_position
             self.chapter_idx -= 1
             self.clear(canvas)
             self.redraw(canvas)
-            self.update_offset(self.offsets[self.chapter_idx])
+            self.current_position = self.positions[self.chapter_idx]
             self.render_chapter(canvas)
+            self.update_offset()
+            self.redraw(canvas)
 
     def action_quit(self, _: ueberzug.Canvas) -> None:
-        self.offsets[self.chapter_idx] = self.precise_offset
+        self.positions[self.chapter_idx] = self.current_position
         states = {}
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as state_file:
                 states = json.loads(state_file.read())
 
         states[self.path] = {
-                "offsets": self.offsets,
+                "positions": self.positions,
                 "chapter_idx": self.chapter_idx,
                 }
 
@@ -147,12 +158,10 @@ class Reader:
 
     def action_resize(self, canvas: ueberzug.Canvas) -> None:
         self.clear(canvas)
-        self.cols = self.stdscr.getmaxyx()[1] - 1
-        self.redraw(canvas)
-        self.rows, self.cols = self.stdscr.getmaxyx()
         self.book.update_term_info()
-        self.rounded_offset = self.precise_offset // self.cols
         self.render_chapter(canvas)
+        self.update_offset()
+        self.redraw(canvas)
 
 
     def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
@@ -179,17 +188,22 @@ class Reader:
             pass
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
-        self.pad.refresh(self.rounded_offset, 0, 0, 0, self.rows - 1, self.cols)
+        self.rows, self.cols = self.stdscr.getmaxyx()
+        if self.offset > (offset := self.chapter_rows - self.rows):
+            self.offset = offset
+        self.pad.refresh(self.offset, 0, 0, 0, self.rows - 1, self.cols - 1)
         with canvas.synchronous_lazy_drawing:
             for initial_y, placement in self.current_chapter_placements:
                 visibility = self.determine_visibility(initial_y, placement.height)
                 if visibility == ueberzug.Visibility.VISIBLE:
-                    placement.y = initial_y - self.rounded_offset
+                    placement.y = initial_y - self.offset
                 placement.visibility = visibility
 
     @ueberzug.Canvas()
     def loop(self, canvas: ueberzug.Canvas) -> None:
         self.render_chapter(canvas)
+        self.update_offset()
+        self.redraw(canvas)
         while True:
             ch = self.pad.getch()
             self.on_key(ch, canvas)
