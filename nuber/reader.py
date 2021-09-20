@@ -122,7 +122,6 @@ class Reader:
             self.positions[self.chapter_idx] = self.current_position
             self.chapter_idx += 1
             self.clear(canvas)
-            self.redraw(canvas)
             self.current_position = self.positions[self.chapter_idx]
             self.render_chapter(canvas)
             self.update_offset()
@@ -133,7 +132,6 @@ class Reader:
             self.positions[self.chapter_idx] = self.current_position
             self.chapter_idx -= 1
             self.clear(canvas)
-            self.redraw(canvas)
             self.current_position = self.positions[self.chapter_idx]
             self.render_chapter(canvas)
             self.update_offset()
@@ -159,6 +157,7 @@ class Reader:
     def action_resize(self, canvas: ueberzug.Canvas) -> None:
         self.clear(canvas)
         self.book.update_term_info()
+        self.rows, self.cols = self.stdscr.getmaxyx()
         self.render_chapter(canvas)
         self.update_offset()
         self.redraw(canvas)
@@ -188,7 +187,6 @@ class Reader:
             pass
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
-        self.rows, self.cols = self.stdscr.getmaxyx()
         if self.offset > (offset := self.chapter_rows - self.rows):
             self.offset = offset
         self.pad.refresh(self.offset, 0, 0, 0, self.rows - 1, self.cols - 1)
