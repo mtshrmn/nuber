@@ -117,6 +117,16 @@ class Reader:
             self.current_position = sum(self.word_count_per_line[:self.offset])
             self.redraw(canvas)
 
+    def action_top(self, canvas: ueberzug.Canvas) -> None:
+        self.offset = 0
+        self.current_position = 0
+        self.redraw(canvas)
+
+    def action_bottom(self, canvas: ueberzug.Canvas) -> None:
+        self.offset = self.chapter_rows - self.rows
+        self.current_position = sum(self.word_count_per_line[:self.offset])
+        self.redraw(canvas)
+
     def action_next_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.next_chapter():
             self.positions[self.chapter_idx] = self.current_position
@@ -170,6 +180,8 @@ class Reader:
                 ord("k"): self.action_scroll_up,
                 ord("l"): self.action_next_chapter,
                 ord("q"): self.action_quit,
+                ord("G"): self.action_bottom,
+                ord("g"): self.action_top,
                 curses.KEY_RESIZE: self.action_resize,
                 }
 
