@@ -64,10 +64,10 @@ class Reader:
                     if element.text.startswith("S"):
                         self.add_image(canvas, (current_pos, line_num), info)
                     current_pos += len(element.text)
-                    continue
-                current_pos += self.addstr(line_num, current_pos, element.text, element.style)
+                else:
+                    current_pos += self.addstr(line_num, current_pos, element.text, element.style)
                 word_count += len(element.text.split())
-            self.word_count_per_line.append(word_count)
+            self.word_count_per_line.append(max(1, word_count))
 
     def determine_visibility(self, y: int, h: int) -> ueberzug.Visibility:
         y_pos = y - self.offset
@@ -107,14 +107,14 @@ class Reader:
 
     def action_scroll_down(self, canvas: ueberzug.Canvas) -> None:
         if self.offset < self.chapter_rows - self.rows:
-            self.current_position += self.word_count_per_line[self.offset]
             self.offset += 1
+            self.current_position = sum(self.word_count_per_line[:self.offset])
             self.redraw(canvas)
 
     def action_scroll_up(self, canvas: ueberzug.Canvas) -> None:
         if self.offset > 0:
-            self.current_position -= self.word_count_per_line[self.offset]
             self.offset -= 1
+            self.current_position = sum(self.word_count_per_line[:self.offset])
             self.redraw(canvas)
 
     def action_next_chapter(self, canvas: ueberzug.Canvas) -> None:
