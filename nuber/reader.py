@@ -11,10 +11,10 @@ class Reader:
         self.path = path
         self.stdscr: curses.window = curses.initscr()
         self.rows, self.cols = self.stdscr.getmaxyx()
-        self.cahce_dir = os.path.join(appdirs.user_cache_dir(), "nuber")
-        if not os.path.exists(self.cahce_dir):
-            os.mkdir(self.cahce_dir)
-        self.state_file = os.path.join(appdirs.user_cache_dir(), "nuber", "state.json")
+        self.cache_dir = os.path.join(appdirs.user_cache_dir(), "nuber")
+        if not os.path.exists(self.cache_dir):
+            os.mkdir(self.cache_dir)
+        self.state_file = os.path.join(self.cache_dir, "state.json")
         curses.noecho()
         curses.curs_set(0)
         self.book = Book(path)
