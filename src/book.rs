@@ -80,6 +80,16 @@ impl Book {
         self.book.get_num_pages()
     }
 
+    fn get_toc(&mut self) -> Vec<(String, usize)> {
+        self.book
+            .toc
+            .iter()
+            .map(|p| (p.label.clone(), self.book.resource_uri_to_chapter(&p.content)))
+            .filter(|(_, n)| n.is_some())
+            .map(|(l, n)| (l, n.unwrap()))
+            .collect()
+    }
+
     fn render_current_chapter(&mut self) -> Vec<Vec<Element>> {
         let mut doc = Vec::new();
         let rich_converter = RichConverter;

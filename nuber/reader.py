@@ -4,6 +4,7 @@ import appdirs
 import os
 import ueberzug.lib.v0 as ueberzug
 from .rust_module.nuber import Book, Image
+from .toc import Toc
 
 
 class Reader:
@@ -38,6 +39,8 @@ class Reader:
                     self.book.set_current_chapter(self.chapter_idx)
                 except KeyError:
                     pass
+
+        self.toc = Toc(self.stdscr, self.book.get_toc())
 
     def add_image(self, canvas: ueberzug.Canvas, position: tuple[int, int], info: Image) -> None:
         img_id = f"{position[0]}{position[1]}{info.path}"
@@ -147,6 +150,26 @@ class Reader:
             self.update_offset()
             self.redraw(canvas)
 
+    def action_open_toc(self, canvas: ueberzug.Canvas) -> None:
+        with canvas.synchronous_lazy_drawing:
+            for _, placement in self.current_chapter_placements:
+                placement.visibility = ueberzug.Visibility.INVISIBLE
+
+        action, chapter = self.toc.loop(self.chapter_idx)
+        if action == "quit":
+            self.action_quit(canvas)
+        elif action == "goto":
+            self.positions[self.chapter_idx] = self.current_position
+            self.chapter_idx = chapter
+            self.clear(canvas)
+            self.current_position = 0
+            self.book.set_current_chapter(self.chapter_idx)
+            self.render_chapter(canvas)
+            self.update_offset()
+            self.redraw(canvas)
+        else:
+            self.redraw(canvas)
+
     def action_quit(self, _: ueberzug.Canvas) -> None:
         self.positions[self.chapter_idx] = self.current_position
         states = {}
@@ -182,6 +205,7 @@ class Reader:
                 ord("q"): self.action_quit,
                 ord("G"): self.action_bottom,
                 ord("g"): self.action_top,
+                ord("t"): self.action_open_toc,
                 curses.KEY_RESIZE: self.action_resize,
                 }
 
