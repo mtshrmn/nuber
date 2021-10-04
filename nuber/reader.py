@@ -167,6 +167,8 @@ class Reader:
             self.render_chapter(canvas)
             self.update_offset()
             self.redraw(canvas)
+        elif action == "resize":
+            self.action_resize(canvas)
         else:
             self.redraw(canvas)
 
