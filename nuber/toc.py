@@ -72,6 +72,8 @@ class Toc:
         self.pad.refresh(self.y_offset, 0, 2 * self.padding, self.padding + 1, self.rows -  2 * self.padding, self.cols - 2 * self.padding)
 
     def loop(self, chapter_idx: int) -> tuple[str, int]:
+        if not self.toc:
+            return "", 0
         # clean previous toc to remove possible broken window
         # will allways throw AttributeError on first loop() call
         try:
