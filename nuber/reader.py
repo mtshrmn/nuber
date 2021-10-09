@@ -155,10 +155,10 @@ class Reader:
             for _, placement in self.current_chapter_placements:
                 placement.visibility = ueberzug.Visibility.INVISIBLE
 
-        action, chapter = self.toc.loop(self.chapter_idx)
+        action, chapter = self.toc.run(self.chapter_idx)
         if action == "quit":
             self.action_quit(canvas)
-        elif action == "goto":
+        elif action == "select":
             self.positions[self.chapter_idx] = self.current_position
             self.chapter_idx = chapter
             self.clear(canvas)
