@@ -32,8 +32,9 @@ class ListView:
         self.focused = False
 
     def action_select(self) -> None:
-        self.action = "select"
-        self.focused = False
+        if self.data:
+            self.action = "select"
+            self.focused = False
 
     def action_next(self) -> None:
         if self.selected_row < len(self.data) - 1:
@@ -82,17 +83,20 @@ class ListView:
             self.y_offset = self.selected_row
         self.pad.refresh(self.y_offset, 0, 2 * padding, padding + 1, self.rows - 2 * padding, self.cols - 2 * padding)
 
+    def redraw_border(self) -> None:
+        self.border.clear()
+        self.border.box()
+        self.border.addstr(0, self.padding, self.title, curses.A_BOLD | curses.A_ITALIC)
+        self.border.refresh()
+
     def determine_selected_row(self, _: Any) -> int:
         # inherited classes should implement this method
         return 0
 
     def has_draw_estate(self) -> bool:
-        # inherited classes should implement this method
-        return True
+        return self.rows - 4 * self.padding + 1 > 0 and self.cols - 3 * self.padding > len(self.title)
 
     def run(self, data: Any) -> tuple[str, Any]:
-        if not self.data:
-            return "", 0
         # clear previously drawn window to remove possible clutter
         # will allways throw AttributeError on first run() call
         try:
@@ -104,18 +108,18 @@ class ListView:
             return "", 0
         padding = self.padding
         self.border = self.stdscr.subwin(self.rows - 2 * padding, self.cols - 2 * padding, padding, padding)
-        self.border.box()
-        self.border.addstr(0, padding, self.title, curses.A_BOLD | curses.A_ITALIC)
-        self.border.refresh()
+        self.redraw_border()
         # calculate size of pad, need to contain all of the data.
-        longest_row = max([label for label, _ in self.data], key=len)
+        longest_row = max([label for label, _ in self.data], key=len) if self.data else ""
         self.pad = curses.newpad(len(self.data) + padding, len(longest_row) + padding)
-        self.selected_row = self.determine_selected_row(data)
+        self.selected_row = max(0, self.determine_selected_row(data))
         self.redraw()
         self.focused = True
         while self.focused:
             ch = self.pad.getch()
             self.on_key(ch)
-        return self.action, self.data[self.selected_row][1]
+        if self.data:
+            return self.action, self.data[self.selected_row][1]
+        return self.action, None
 
 

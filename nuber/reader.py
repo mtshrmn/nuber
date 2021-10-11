@@ -5,6 +5,8 @@ import os
 import ueberzug.lib.v0 as ueberzug
 from .rust_module.nuber import Book, Image
 from .toc import Toc
+from .bookmarks import Bookmark
+from .cmdline import CmdLine
 
 
 class Reader:
@@ -18,6 +20,7 @@ class Reader:
         self.state_file = os.path.join(self.cache_dir, "state.json")
         curses.noecho()
         curses.curs_set(0)
+        curses.set_escdelay(1) # type: ignore
         self.book = Book(path)
 
         self.offset = 0
@@ -27,6 +30,7 @@ class Reader:
         self.placements = {}
         self.current_chapter_placements = []
         self.word_count_per_line = []
+        self.bookmarks = Bookmark(self.stdscr)
 
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as state_file:
@@ -35,12 +39,14 @@ class Reader:
                     state = states[self.path]
                     self.positions = state["positions"]
                     self.chapter_idx = state["chapter_idx"]
+                    self.bookmarks.load_bookmarks(state["bookmarks"])
                     self.current_position = self.positions[self.chapter_idx]
                     self.book.set_current_chapter(self.chapter_idx)
                 except KeyError:
                     pass
 
         self.toc = Toc(self.stdscr, self.book.get_toc())
+        self.cmdline = CmdLine(self.stdscr)
 
     def add_image(self, canvas: ueberzug.Canvas, position: tuple[int, int], info: Image) -> None:
         img_id = f"{position[0]}{position[1]}{info.path}"
@@ -151,10 +157,7 @@ class Reader:
             self.redraw(canvas)
 
     def action_open_toc(self, canvas: ueberzug.Canvas) -> None:
-        with canvas.synchronous_lazy_drawing:
-            for _, placement in self.current_chapter_placements:
-                placement.visibility = ueberzug.Visibility.INVISIBLE
-
+        self.hide_current_placements(canvas)
         action, chapter = self.toc.run(self.chapter_idx)
         if action == "quit":
             self.action_quit(canvas)
@@ -172,6 +175,44 @@ class Reader:
         else:
             self.redraw(canvas)
 
+    def action_open_bookmarks(self, canvas: ueberzug.Canvas) -> None:
+        self.hide_current_placements(canvas)
+        position = self.chapter_idx, self.current_position
+        action, bookmark = self.bookmarks.run(position)
+        if action == "quit":
+            self.action_quit(canvas)
+        elif action == "select":
+            self.positions[self.chapter_idx] = self.current_position
+            self.clear(canvas)
+            self.chapter_idx, self.current_position = bookmark
+            self.book.set_current_chapter(self.chapter_idx)
+            self.render_chapter(canvas)
+            self.update_offset()
+            self.redraw(canvas)
+        elif action == "resize":
+            self.action_resize(canvas)
+        else:
+            self.redraw(canvas)
+
+    def action_add_bookmark(self, canvas: ueberzug.Canvas) -> None:
+        self.action_open_cmd(canvas, command="bookmark add ")
+
+    def action_open_cmd(self, canvas: ueberzug.Canvas, command="") -> None:
+        self.hide_current_placements(canvas)
+        command = self.cmdline.run(command=command)
+        # system commands:
+        if command == "resize":
+            self.action_resize(canvas)
+            return
+
+        tokens = command.split()
+        if len(tokens) > 2 and tokens[0] == "bookmark" and tokens[1] == "add":
+            if label := "".join(tokens[2:]):
+                position = self.chapter_idx, self.current_position
+                self.bookmarks.add_bookmark(label, position)
+        # TODO: add indication for unkown command
+        self.redraw(canvas)
+
     def action_quit(self, _: ueberzug.Canvas) -> None:
         self.positions[self.chapter_idx] = self.current_position
         states = {}
@@ -182,6 +223,7 @@ class Reader:
         states[self.path] = {
                 "positions": self.positions,
                 "chapter_idx": self.chapter_idx,
+                "bookmarks": self.bookmarks.data,
                 }
 
         with open(self.state_file, "w") as state_file:
@@ -197,7 +239,6 @@ class Reader:
         self.update_offset()
         self.redraw(canvas)
 
-
     def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
         keys = {
                 ord("h"): self.action_previous_chapter,
@@ -208,6 +249,9 @@ class Reader:
                 ord("G"): self.action_bottom,
                 ord("g"): self.action_top,
                 ord("t"): self.action_open_toc,
+                ord(":"): self.action_open_cmd,
+                ord("B"): self.action_open_bookmarks,
+                ord("b"): self.action_add_bookmark,
                 curses.KEY_RESIZE: self.action_resize,
                 }
 
@@ -223,6 +267,12 @@ class Reader:
             self.current_chapter_placements = []
         except AttributeError:
             pass
+
+    def hide_current_placements(self, canvas: ueberzug.Canvas) -> None:
+        with canvas.synchronous_lazy_drawing:
+            for _, placement in self.current_chapter_placements:
+                placement.visibility = ueberzug.Visibility.INVISIBLE
+
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
         if self.offset > (offset := self.chapter_rows - self.rows):
