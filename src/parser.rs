@@ -281,7 +281,7 @@ impl<'a> TextDecorator for Decorator<'a> {
     fn decorate_image(&mut self, _title: &str, src: &str) -> (String, Self::Annotation) {
         let (width, height) = self.get_image_dimensions(src);
         let mut first_row = "S".to_string();
-        first_row.push_str(&"I".repeat(width as usize - 1));
+        first_row.push_str(&"I".repeat(width.saturating_sub(1) as usize));
         let mut row = "I".repeat(width as usize);
         let remaining_row = if height > 1 {
             let remaining_width = self.term_info.col as usize - width as usize;
@@ -291,7 +291,7 @@ impl<'a> TextDecorator for Decorator<'a> {
         };
         first_row.push_str(&remaining_row);
         row.push_str(&remaining_row);
-        first_row.push_str(&row.repeat(height as usize - 1));
+        first_row.push_str(&row.repeat(height.saturating_sub(1) as usize));
         (first_row, RichAnnotation::Image(src.to_string()))
     }
 
