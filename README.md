@@ -8,6 +8,7 @@ Inspired by [epy](https://github.com/wustho/epy), *nuber* is an Epub terminal re
  - Display images in terminal.
  - Movement with vim keys `hjkl`.
  - Table of content navigation with `t`.
+ - Bookmarks (`B` to view, `b` to add)
  - Dynamic window resize.
  - Rememebers last position per book.
 
