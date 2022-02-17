@@ -22,6 +22,7 @@ class Reader:
         curses.curs_set(0)
         curses.set_escdelay(1) # type: ignore
         self.book = Book(path)
+        self.lines = self.book.number_of_lines()
 
         self.offset = 0
         self.current_position = 0
@@ -45,6 +46,7 @@ class Reader:
                 except KeyError:
                     pass
 
+        self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
         self.toc = Toc(self.stdscr, self.book.get_toc())
         self.cmdline = CmdLine(self.stdscr)
 
@@ -64,6 +66,7 @@ class Reader:
         chapter = self.book.render_current_chapter()
         self.chapter_rows = max(self.rows, len(chapter))
         self.pad: curses.window = curses.newpad(self.chapter_rows, self.cols)
+        self.percentage_win = curses.newwin(1, 10, 0, self.cols - 4)
         self.word_count_per_line = []
         for line_num, elements in enumerate(chapter):
             current_pos = 0
@@ -117,22 +120,29 @@ class Reader:
     def action_scroll_down(self, canvas: ueberzug.Canvas) -> None:
         if self.offset < self.chapter_rows - self.rows:
             self.offset += 1
+            self.progress += 1
             self.current_position = sum(self.word_count_per_line[:self.offset])
             self.redraw(canvas)
 
     def action_scroll_up(self, canvas: ueberzug.Canvas) -> None:
         if self.offset > 0:
             self.offset -= 1
+            self.progress -= 1
             self.current_position = sum(self.word_count_per_line[:self.offset])
             self.redraw(canvas)
 
     def action_top(self, canvas: ueberzug.Canvas) -> None:
+        self.progress -= self.offset
         self.offset = 0
         self.current_position = 0
         self.redraw(canvas)
 
     def action_bottom(self, canvas: ueberzug.Canvas) -> None:
+        # remove offset from progrss, as if calculating progress from the 1st line
+        self.progress -= self.offset
         self.offset = self.chapter_rows - self.rows
+        # add newly calculated offset for bottom of chapter
+        self.progress += self.offset
         self.current_position = sum(self.word_count_per_line[:self.offset])
         self.redraw(canvas)
 
@@ -143,17 +153,21 @@ class Reader:
             self.clear(canvas)
             self.current_position = self.positions[self.chapter_idx]
             self.render_chapter(canvas)
+            self.progress -= self.offset
             self.update_offset()
+            self.progress += self.lines[self.chapter_idx - 2] + self.offset
             self.redraw(canvas)
 
     def action_previous_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.previous_chapter():
             self.positions[self.chapter_idx] = self.current_position
+            self.progress -= self.offset + self.lines[self.chapter_idx - 1]
             self.chapter_idx -= 1
             self.clear(canvas)
             self.current_position = self.positions[self.chapter_idx]
             self.render_chapter(canvas)
             self.update_offset()
+            self.progress += self.offset
             self.redraw(canvas)
 
     def action_open_toc(self, canvas: ueberzug.Canvas) -> None:
@@ -235,6 +249,8 @@ class Reader:
         self.clear(canvas)
         self.book.update_term_info()
         self.rows, self.cols = self.stdscr.getmaxyx()
+        self.lines = self.book.number_of_lines()
+        self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
         self.render_chapter(canvas)
         self.update_offset()
         self.redraw(canvas)
@@ -261,6 +277,7 @@ class Reader:
     def clear(self, canvas: ueberzug.Canvas) -> None:
         try:
             self.pad.clear()
+            self.percentage_win.clear()
             with canvas.synchronous_lazy_drawing:
                 for _, placement in self.current_chapter_placements:
                     placement.visibility = ueberzug.Visibility.INVISIBLE
@@ -278,6 +295,10 @@ class Reader:
         if self.offset > (offset := self.chapter_rows - self.rows):
             self.offset = offset
         self.pad.refresh(self.offset, 0, 0, 0, self.rows - 1, self.cols - 1)
+
+        percentage_str = f"{self.progress * 100 // sum(self.lines)}%"
+        self.percentage_win.addstr(0, 4 - len(percentage_str), percentage_str, curses.A_BOLD)
+        self.percentage_win.refresh()
         with canvas.synchronous_lazy_drawing:
             for initial_y, placement in self.current_chapter_placements:
                 visibility = self.determine_visibility(initial_y, placement.height)

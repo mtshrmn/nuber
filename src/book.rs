@@ -90,6 +90,27 @@ impl Book {
             .collect()
     }
 
+    fn number_of_lines(&mut self) -> Vec<usize> {
+        let current_chapter = self.book.get_current_page();
+        self.set_current_chapter(0);
+
+        let temp_dir = self.temp_dir.path().to_owned();
+        let decorator = Decorator::new(temp_dir.as_path(), self.term_info);
+
+        let mut number_of_lines = Vec::new();
+
+        // iterate over all of the chapters and sum up the lines
+        while self.next_chapter() {
+            let render_tree = parse(self.get_current_str().as_bytes());
+            let lines = render_tree
+                .render(self.term_info.col as usize, decorator)
+                .into_lines();
+            number_of_lines.push(lines.len());
+        }
+        self.set_current_chapter(current_chapter);
+        number_of_lines
+    }
+
     fn render_current_chapter(&mut self) -> Vec<Vec<Element>> {
         let mut doc = Vec::new();
         let rich_converter = RichConverter;
