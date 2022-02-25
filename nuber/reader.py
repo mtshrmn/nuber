@@ -46,7 +46,6 @@ class Reader:
                 except KeyError:
                     pass
 
-        self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
         self.toc = Toc(self.stdscr, self.book.get_toc())
         self.cmdline = CmdLine(self.stdscr)
 
@@ -113,6 +112,9 @@ class Reader:
         while self.current_position > sum(self.word_count_per_line[:self.offset]):
             self.offset += 1
 
+    def update_progress(self) -> None:
+        self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
+
     @staticmethod
     def action_noop(_: ueberzug.Canvas) -> None:
         pass
@@ -161,7 +163,7 @@ class Reader:
     def action_previous_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.previous_chapter():
             self.positions[self.chapter_idx] = self.current_position
-            self.progress -= self.offset + self.lines[self.chapter_idx - 1]
+            self.progress -= self.offset + self.lines[self.chapter_idx - 2]
             self.chapter_idx -= 1
             self.clear(canvas)
             self.current_position = self.positions[self.chapter_idx]
@@ -250,7 +252,7 @@ class Reader:
         self.book.update_term_info()
         self.rows, self.cols = self.stdscr.getmaxyx()
         self.lines = self.book.number_of_lines()
-        self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
+        self.update_progress()
         self.render_chapter(canvas)
         self.update_offset()
         self.redraw(canvas)
@@ -310,6 +312,7 @@ class Reader:
     def loop(self, canvas: ueberzug.Canvas) -> None:
         self.render_chapter(canvas)
         self.update_offset()
+        self.update_progress()
         self.redraw(canvas)
         while True:
             ch = self.pad.getch()
