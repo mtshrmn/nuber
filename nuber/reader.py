@@ -229,7 +229,7 @@ class Reader:
         # TODO: add indication for unkown command
         self.redraw(canvas)
 
-    def action_quit(self, _: ueberzug.Canvas) -> None:
+    def action_quit(self, _) -> None:
         self.positions[self.chapter_idx] = self.current_position
         states = {}
         if os.path.exists(self.state_file):
