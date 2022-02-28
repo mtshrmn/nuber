@@ -30,7 +30,7 @@ impl Book {
     fn new(path: String) -> Self {
         let temp_dir = tempdir().unwrap();
         let term_info = Self::get_term_info();
-        let mut book = EpubDoc::new(path.clone()).unwrap();
+        let mut book = EpubDoc::new(path).unwrap();
 
         for (_, (path, mime)) in book.resources.clone() {
             if mime.contains("image") {

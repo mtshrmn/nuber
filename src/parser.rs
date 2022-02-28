@@ -8,7 +8,7 @@ use pyo3::prelude::*;
 use std::iter::FromIterator;
 use std::path::Path;
 
-#[derive(EnumSetType, Debug, Hash)]
+#[derive(EnumSetType, Debug)]
 pub enum Effect {
     Reverse,
     Underline,
@@ -199,7 +199,7 @@ impl<'a> Decorator<'a> {
 
     fn get_image_dimensions(&self, src: &str) -> (u32, u32) {
         self.create_image_from_path(src)
-            .and_then(|i| Some(i.size))
+            .map(|i| i.size)
             .unwrap_or((0, 0))
     }
 
