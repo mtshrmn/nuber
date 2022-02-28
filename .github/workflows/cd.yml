@@ -1,0 +1,33 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Patch html2text
+        run: cd rust-html2text && git apply ../html2text.patch
+      - uses: messense/maturin-action@v1
+        with:
+          maturin-version: latest
+          command: build
+          args: --release
+      - name: Install wheel
+        run: pip install .
+      - uses: actions/upload-artifact@v2
+        with:
+          name: nuber
+          path: target/wheels/*.whl
+
+    
