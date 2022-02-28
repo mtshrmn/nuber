@@ -137,6 +137,7 @@ impl Converter<RichAnnotation> for RichConverter {
             RichAnnotation::Strikeout => Some(Effect::Strikethrough.into()),
             RichAnnotation::Code => None,
             RichAnnotation::Preformat(_) => None,
+            RichAnnotation::Header(_) => Some(Effect::Bold.into()),
         }
     }
 
@@ -246,10 +247,6 @@ impl<'a> TextDecorator for Decorator<'a> {
         "".to_string()
     }
 
-    fn header_prefix(&mut self, _: usize) -> String {
-        "".to_string()
-    }
-
     fn quote_prefix(&mut self) -> String {
         "".to_string()
     }
@@ -267,6 +264,14 @@ impl<'a> TextDecorator for Decorator<'a> {
     }
 
     fn decorate_code_end(&mut self) -> String {
+        "".to_string()
+    }
+
+    fn decorate_header_start(&mut self, level: usize) -> (String, Self::Annotation) {
+        ("".to_string(), RichAnnotation::Header(level))
+    }
+
+    fn decorate_header_end(&mut self) -> String {
         "".to_string()
     }
 
