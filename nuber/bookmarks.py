@@ -2,13 +2,14 @@ import curses
 from .listview import ListView
 
 class Bookmark(ListView):
-    def __init__(self, stdscr: curses.window) -> None:
-        super().__init__(stdscr, [])
-        self.title = "Bookmarks"
-        self.keys = {
-                ord("B"): self.action_close_view,
-                ord("d"): self.action_delete_bookmark,
+    def __init__(self, stdscr: curses.window, keybinds={}) -> None:
+        keys = {
+                ord("B"): "close_view",
+                ord("d"): "delete_bookmark",
                 }
+        keys.update(keybinds)
+        super().__init__(stdscr, [], keybinds=keys)
+        self.title = "Bookmarks"
 
     def determine_selected_row(self, bookmark_position: tuple[int, int]) -> int:
         chapter_idx, position = bookmark_position

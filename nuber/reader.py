@@ -2,25 +2,46 @@ import curses
 import json
 import appdirs
 import os
+import toml
 import ueberzug.lib.v0 as ueberzug
 from .rust_module.nuber import Book, Image
 from .toc import Toc
 from .bookmarks import Bookmark
 from .cmdline import CmdLine
+from .config import Config
 
 
 class Reader:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, config_path=None) -> None:
+        # curses init
         self.path = path
         self.stdscr: curses.window = curses.initscr()
         self.rows, self.cols = self.stdscr.getmaxyx()
-        self.cache_dir = os.path.join(appdirs.user_cache_dir(), "nuber")
-        if not os.path.exists(self.cache_dir):
-            os.mkdir(self.cache_dir)
-        self.state_file = os.path.join(self.cache_dir, "state.json")
+
         curses.noecho()
         curses.curs_set(0)
         curses.set_escdelay(1) # type: ignore
+
+        # read configuration file
+        config_dir = config_path
+        if config_path == None:
+            config_dir = os.path.join(appdirs.user_config_dir(), "nuber")
+        if not os.path.exists(config_dir):
+            os.mkdir(config_dir)
+        config_file_path = os.path.join(config_dir, "config.toml")
+        if not os.path.exists(config_file_path):
+            with open(config_file_path, "x"):
+                pass
+
+        self.config = Config(config_file_path)
+
+        self.cache_dir = self.config.get("cache_dir")
+        if self.cache_dir is None:
+            self.cache_dir = os.path.join(appdirs.user_cache_dir(), "nuber")
+
+        if not os.path.exists(self.cache_dir):
+            os.mkdir(self.cache_dir)
+        self.state_file = os.path.join(self.cache_dir, "state.json")
         self.book = Book(path)
         self.lines = self.book.number_of_lines()
 
@@ -31,7 +52,7 @@ class Reader:
         self.placements = {}
         self.current_chapter_placements = []
         self.word_count_per_line = []
-        self.bookmarks = Bookmark(self.stdscr)
+        self.bookmarks = Bookmark(self.stdscr, keybinds=self.config.keybinds("bookmarks_keybinds"))
 
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as state_file:
@@ -46,7 +67,7 @@ class Reader:
                 except KeyError:
                     pass
 
-        self.toc = Toc(self.stdscr, self.book.get_toc())
+        self.toc = Toc(self.stdscr, self.book.get_toc(), keybinds=self.config.keybinds("toc_keybinds"))
         self.cmdline = CmdLine(self.stdscr)
 
     def add_image(self, canvas: ueberzug.Canvas, position: tuple[int, int], info: Image) -> None:
@@ -273,6 +294,9 @@ class Reader:
                 curses.KEY_RESIZE: self.action_resize,
                 }
 
+        reader_keybinds = self.config.keybinds("reader_keybinds").items()
+        custom_keys = {k: getattr(self, f"action_{v}", self.action_noop) for k, v, in reader_keybinds}
+        keys.update(custom_keys)
         action = keys.get(key, self.action_noop)
         action(canvas)
 

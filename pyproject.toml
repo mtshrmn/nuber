@@ -13,6 +13,7 @@ python = "^3.9"
 ueberzug = "^18.1.9"
 appdirs = "^1.4.4"
 click = "^8.0.1"
+toml = "^0.10.2"
 
 [tool.poetry.scripts]
 nuber = "nuber:main"

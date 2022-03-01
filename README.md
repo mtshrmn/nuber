@@ -27,7 +27,59 @@ $ nuber --help
 Usage: nuber [OPTIONS] BOOK
 
 Options:
-  --help  Show this message and exit.
+  -c, --config PATH
+  --help             Show this message and exit.
+```
+
+### Configuration
+```toml
+# nuber example config file
+
+# there are three possible ways to add a new keybind:
+# 1. <ascii letter> = <action>
+# 2. KEY_<key> = <action>, see https://docs.python.org/3/library/curses.html#constants
+# 3. integer = <action>, where the integer is the character recived from curses.getch()
+
+# currently all <actions> are listed
+# those are the default keybinds:
+
+[reader_keybinds]
+j = "scroll_down"
+k = "scroll_up"
+g = "top"
+G = "bottom"
+l = "next_chapter"
+h = "previous_chapter"
+t = "open_toc"
+B = "open bookmarks"
+b = "add_bookmark"
+":" = "open_cmd"
+q = "quit"
+KEY_RESIZE = "resize"
+
+[bookmarks_keybinds]
+B = "close_view"
+d = "delete_bookmark"
+q = "quit"
+j = "next"
+k = "previous"
+o = "select"
+10 = "select" # return
+13 = "select" # return
+KEY_ENTER = "select" 
+KEY_RESIZE = "resize"
+
+[toc_keybinds]
+t = "close_view"
+q = "quit"
+j = "next"
+k = "previous"
+o = "select"
+10 = "select" # return
+13 = "select" # return
+KEY_ENTER = "select" 
+KEY_RESIZE = "resize"
+
 ```
 
 ### Contribute

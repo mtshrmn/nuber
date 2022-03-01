@@ -6,8 +6,9 @@ __version__ = '0.1.0'
 
 @click.command()
 @click.argument("book", type=click.Path(exists=True))
-def main(book):
-    reader = Reader(click.format_filename(book))
+@click.option("-c", "--config", type=click.Path(exists=True))
+def main(book, config):
+    reader = Reader(click.format_filename(book), config_path=config)
 
     def signal_handler(*_):
         reader.action_quit(None)

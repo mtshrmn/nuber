@@ -2,11 +2,11 @@ import curses
 from typing import Any
 
 class ListView:
-    def __init__(self, stdscr: curses.window, data: list[tuple[str, Any]]) -> None:
+    def __init__(self, stdscr: curses.window, data: list[tuple[str, Any]], keybinds={}) -> None:
         # settings
         self.padding = 3
         self.title = "title"
-        self.keys = {}
+        self.keys = {k: getattr(self, f"action_{v}", self.action_noop) for k, v in keybinds.items()}
 
         # context
         self.stdscr = stdscr
