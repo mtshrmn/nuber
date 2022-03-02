@@ -2,7 +2,6 @@ import curses
 import json
 import appdirs
 import os
-import toml
 import ueberzug.lib.v0 as ueberzug
 from .rust_module.nuber import Book, Image
 from .toc import Toc
@@ -14,7 +13,7 @@ from .config import Config
 class Reader:
     def __init__(self, path: str, config_path=None) -> None:
         # curses init
-        self.path = path
+        self.path = os.path.abspath(path)
         self.stdscr: curses.window = curses.initscr()
         self.rows, self.cols = self.stdscr.getmaxyx()
 
@@ -42,7 +41,7 @@ class Reader:
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
         self.state_file = os.path.join(self.cache_dir, "state.json")
-        self.book = Book(path)
+        self.book = Book(self.path)
         self.lines = self.book.number_of_lines()
 
         self.offset = 0
