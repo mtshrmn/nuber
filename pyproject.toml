@@ -22,8 +22,5 @@ nuber = "nuber:main"
 requires = ["poetry-core>=1.0.0", "maturin>=0.11,<0.12"]
 build-backend = "maturin"
 
-[tool.maturin]
-compatibility = "Linux"
-
 [project.scripts]
 nuber = "nuber:main"
