@@ -2,7 +2,7 @@ from .reader import Reader
 import click
 import signal
 
-__version__ = '0.1.0'
+__version__ = '1.0.0'
 
 @click.command()
 @click.argument("book", type=click.Path(exists=True))
