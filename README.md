@@ -13,12 +13,8 @@ Inspired by [epy](https://github.com/wustho/epy), *nuber* is an Epub terminal re
  - Rememebers last position per book.
 
 ### Installation
-Requirements: `maturin`, `pip`
 ```sh
-$ git clone https://github.com/mtshrmn/nuber.git --recursive && cd nuber
-$ cd rust-html2text && git apply ../html2text.patch && cd ..
-$ maturin build --release
-$ pip install .
+$ pip install nuber
 ```
 
 ### Usage
