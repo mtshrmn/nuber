@@ -1,6 +1,6 @@
 [package]
 name = "nuber"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Moshe Sherman <moshesher1998@gmail.com>"]
 edition = "2018"
 readme = "README.md"
