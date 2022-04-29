@@ -111,6 +111,84 @@ impl Book {
         number_of_lines
     }
 
+    // returns single string with pure text and line lengths
+    // TODO: rename function
+    fn render_current_chapter_text(&mut self) -> (String, Vec<usize>) {
+        let mut lines_len = Vec::new();
+        let mut text = String::new();
+        let temp_dir = self.temp_dir.path().to_owned();
+        let decorator = Decorator::new(temp_dir.as_path(), self.term_info);
+        let render_tree = parse(self.get_current_str().as_bytes());
+        let lines = render_tree
+            .render(self.term_info.col as usize, decorator)
+            .into_lines();
+
+        for line in lines {
+            let mut line_str = String::new();
+            for element in line.iter() {
+                if let TaggedLineElement::Str(ts) = element {
+                    line_str.push_str(&ts.s.clone());
+                }
+            }
+            let line = line_str.trim_end();
+            let line_len = line.chars().count();
+            text.push_str(line);
+            text.push(' ');
+            lines_len.push(line_len + 1);
+        }
+        (text, lines_len)
+    }
+
+    fn highlight_query_in_current_chapter(
+        &mut self,
+        query: &str,
+    ) -> Option<((usize, usize), Vec<usize>)> {
+        let (text, lines_len) = self.render_current_chapter_text();
+        if let Some(b_idx) = text.find(query) {
+            // text.find() returns the byte index,
+            // however we want to get the char index
+            let mut col_idx = text[..b_idx].chars().count();
+            let mut row_idx = 0;
+            for line_len in lines_len.clone() {
+                if col_idx < line_len {
+                    break;
+                }
+                row_idx += 1;
+                col_idx -= line_len;
+            }
+            let first_char = (row_idx, col_idx);
+            let mut query_len = query.len();
+            // create a vec of following lines after the first match
+            // each index is the next line with the
+            // specified number of characters to highlight.
+            // the highlight in the first line starts from `col_idx`
+            // in the rest (if exist) of the lines - start from 0.
+            let mut lines_len_iter = lines_len.into_iter().skip(row_idx);
+            let first_line_len = lines_len_iter.next().unwrap();
+            // because the first line is special, we will treat it
+            // first and then iterate over the rest.
+            let first_highlight = query_len.min(first_line_len - col_idx);
+            let mut highlights = Vec::from([first_highlight]);
+            // subtract the amount of chars we pushed into `highlights`
+            query_len = query_len.saturating_sub(first_highlight);
+            // iterate over the rest of the lines
+            for line_len in lines_len_iter {
+                // if the rest of the highlight can fit into the line
+                // we do so and stop iterating. we're done.
+                if line_len >= query_len {
+                    highlights.push(query_len);
+                    break;
+                }
+                // otherwise, we just enter the line_len and subtract
+                highlights.push(line_len);
+                query_len = query_len.saturating_sub(line_len);
+            }
+            Some((first_char, highlights))
+        } else {
+            None
+        }
+    }
+
     fn render_current_chapter(&mut self) -> Vec<Vec<Element>> {
         let mut doc = Vec::new();
         let rich_converter = RichConverter;

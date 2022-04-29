@@ -1,9 +1,10 @@
 import curses
 
 class CmdLine:
-    def __init__(self, stdscr: curses.window) -> None:
+    def __init__(self, stdscr: curses.window, prompt=":") -> None:
         self.stdscr = stdscr
         self.command = ""
+        self.prompt = prompt
 
     def action_select(self) -> None:
         self.focused = False
@@ -45,13 +46,14 @@ class CmdLine:
 
     def redraw(self) -> None:
         self.input.clear()
-        self.input.addch(0, 0, ":", curses.A_REVERSE)
+        self.input.addch(0, 0, self.prompt, curses.A_REVERSE)
         # purely for cosmetic reasons
         self.input.addstr(0, 1, " " * (self.cols - 1), curses.A_REVERSE)
         self.input.addstr(0, 1, self.crop_text(self.command), curses.A_REVERSE)
         self.input.refresh()
 
-    def run(self, command="") -> str:
+    def run(self, command="", prompt=":") -> str:
+        self.prompt = prompt
         self.rows, self.cols = self.stdscr.getmaxyx()
         self.command = command
         self.input = curses.newwin(1, self.cols + 1, self.rows - 1, 0)

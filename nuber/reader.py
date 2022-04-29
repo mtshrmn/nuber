@@ -139,19 +139,28 @@ class Reader:
     def action_noop(_: ueberzug.Canvas) -> None:
         pass
 
-    def action_scroll_down(self, canvas: ueberzug.Canvas) -> None:
-        if self.offset < self.chapter_rows - self.rows:
-            self.offset += 1
-            self.progress += 1
-            self.current_position = sum(self.word_count_per_line[:self.offset])
-            self.redraw(canvas)
+    def action_scroll_down(self, canvas: ueberzug.Canvas, step=1) -> None:
+        for _ in range(step):
+            if self.offset < self.chapter_rows - self.rows:
+                self.offset += 1
+                self.progress += 1
+        self.current_position = sum(self.word_count_per_line[:self.offset])
+        self.redraw(canvas)
 
-    def action_scroll_up(self, canvas: ueberzug.Canvas) -> None:
-        if self.offset > 0:
-            self.offset -= 1
-            self.progress -= 1
-            self.current_position = sum(self.word_count_per_line[:self.offset])
-            self.redraw(canvas)
+    def action_scroll_up(self, canvas: ueberzug.Canvas, step=1) -> None:
+        for _ in range(step):
+            if self.offset > 0:
+                self.offset -= 1
+                self.progress -= 1
+        self.current_position = sum(self.word_count_per_line[:self.offset])
+        self.redraw(canvas)
+
+    def action_scroll_to(self, canvas: ueberzug.Canvas, target=0) -> None:
+        step = self.offset - target
+        if step < 0:
+            self.action_scroll_down(canvas, step=-step)
+        else:
+            self.action_scroll_up(canvas, step=step)
 
     def action_top(self, canvas: ueberzug.Canvas) -> None:
         self.progress -= self.offset
@@ -248,6 +257,29 @@ class Reader:
                 self.bookmarks.add_bookmark(label, position)
         # TODO: add indication for unkown command
         self.redraw(canvas)
+    
+    def action_open_search(self, canvas: ueberzug.Canvas) -> None:
+        self.hide_current_placements(canvas)
+        # clear previous search, probably the slowest solution
+        self.render_chapter(canvas)
+        self.redraw(canvas)
+        query = self.cmdline.run(prompt="/")
+        if len(query) >= 1:
+            if data := self.book.highlight_query_in_current_chapter(query):
+                (row, col), other_lines = data
+                focus_padding = self.rows // 3
+                target = row - focus_padding
+                self.action_scroll_to(canvas, target=target)
+                # TODO: color text instead of REVERSE
+                for row_offset, chars_len in enumerate(other_lines):
+                    # only on the first line start from `col`
+                    # every other line should be from the start
+                    start_col = 0 if row_offset else col
+                    self.pad.chgat(row + row_offset, start_col, chars_len, curses.A_REVERSE)
+            else:
+                # TODO: add indication for failure finding query
+                pass
+        self.redraw(canvas)
 
     def action_quit(self, _) -> None:
         self.positions[self.chapter_idx] = self.current_position
@@ -288,6 +320,7 @@ class Reader:
                 ord("g"): self.action_top,
                 ord("t"): self.action_open_toc,
                 ord(":"): self.action_open_cmd,
+                ord("/"): self.action_open_search,
                 ord("B"): self.action_open_bookmarks,
                 ord("b"): self.action_add_bookmark,
                 curses.KEY_RESIZE: self.action_resize,
