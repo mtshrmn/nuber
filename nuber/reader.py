@@ -20,6 +20,9 @@ class Reader:
         curses.noecho()
         curses.curs_set(0)
         curses.set_escdelay(1) # type: ignore
+        curses.start_color()
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_RED, -1)
 
         # read configuration file
         config_dir = config_path
@@ -33,6 +36,9 @@ class Reader:
                 pass
 
         self.config = Config(config_file_path)
+
+        highlight_color = self.config.highlight_color
+        curses.init_color(curses.COLOR_RED, *highlight_color)
 
         self.cache_dir = self.config.get("cache_dir")
         if self.cache_dir is None:
@@ -275,7 +281,7 @@ class Reader:
                     # only on the first line start from `col`
                     # every other line should be from the start
                     start_col = 0 if row_offset else col
-                    self.pad.chgat(row + row_offset, start_col, chars_len, curses.A_REVERSE)
+                    self.pad.chgat(row + row_offset, start_col, chars_len, curses.color_pair(1))
             else:
                 # TODO: add indication for failure finding query
                 pass

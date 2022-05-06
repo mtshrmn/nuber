@@ -24,3 +24,13 @@ class Config:
 
     def get(self, key, **kw):
         return self._config.get(key, **kw)
+
+    @property
+    def highlight_color(self):
+        default_hex = "#ff000"
+        hex = self._config.get("highlight_color", default_hex)
+        hex = hex.lstrip("#")
+        r = int(hex[:2], 16) * 1000 // 256
+        g = int(hex[2:4], 16) * 1000 // 256
+        b = int(hex[4:6], 16) * 1000 // 256
+        return r, g, b
