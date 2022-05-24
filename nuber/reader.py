@@ -276,12 +276,12 @@ class Reader:
                 focus_padding = self.rows // 3
                 target = row - focus_padding
                 self.action_scroll_to(canvas, target=target)
-                # TODO: color text instead of REVERSE
                 for row_offset, chars_len in enumerate(other_lines):
                     # only on the first line start from `col`
                     # every other line should be from the start
                     start_col = 0 if row_offset else col
-                    self.pad.chgat(row + row_offset, start_col, chars_len, curses.color_pair(1))
+                    formatting = curses.color_pair(1) | curses.A_BOLD
+                    self.pad.chgat(row + row_offset, start_col, chars_len, formatting)
             else:
                 # TODO: add indication for failure finding query
                 pass
