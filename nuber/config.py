@@ -1,6 +1,9 @@
 import curses
 import toml
 from string import ascii_letters
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 
 
 class Config:
@@ -18,17 +21,17 @@ class Config:
             return k
         return -1
 
-    def keybinds(self, section):
-        items = self._config.get(section, {}).items()
+    def keybinds(self, section) -> dict:
+        items = self.get(section, {}).items()
         return {self._parse_key(k): v for k, v in items}
 
-    def get(self, key, **kw):
-        return self._config.get(key, **kw)
+    def get(self, key: str, default: Any | T = None) -> Any | T:
+        return self._config.get(key, default)
 
     @property
-    def highlight_color(self):
+    def highlight_color(self) -> tuple[int, int, int]:
         default_hex = "#ff000"
-        hex = self._config.get("highlight_color", default_hex)
+        hex = self.get("highlight_color", default_hex)
         hex = hex.lstrip("#")
         r = int(hex[:2], 16) * 1000 // 256
         g = int(hex[2:4], 16) * 1000 // 256
