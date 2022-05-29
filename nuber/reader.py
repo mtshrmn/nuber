@@ -159,12 +159,6 @@ class Reader:
                 f = formatting_current if highlight_idx == self.highlights_index else formatting
                 self.pad.chgat(row + row_offset, start_col, chars_len, f)
 
-    def action_jump_to_highlight(self, canvas: ueberzug.Canvas) -> None:
-        (current_row, _), _ = self.highlights[self.highlights_index]
-        row_padding = self.rows // 3
-        target = current_row - row_padding
-        self.action_scroll_to(canvas, target=target)
-
     @staticmethod
     def action_noop(_: ueberzug.Canvas) -> None:
         pass
@@ -191,6 +185,12 @@ class Reader:
             self.action_scroll_down(canvas, step=-step)
         else:
             self.action_scroll_up(canvas, step=step)
+
+    def action_jump_to_highlight(self, canvas: ueberzug.Canvas) -> None:
+        (current_row, _), _ = self.highlights[self.highlights_index]
+        row_padding = self.rows // 3
+        target = current_row - row_padding
+        self.action_scroll_to(canvas, target=target)
 
     def action_top(self, canvas: ueberzug.Canvas) -> None:
         self.progress -= self.offset
