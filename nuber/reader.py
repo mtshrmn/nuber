@@ -22,7 +22,8 @@ class Reader:
         curses.set_escdelay(1) # type: ignore
         curses.start_color()
         curses.use_default_colors()
-        curses.init_pair(1, curses.COLOR_RED, -1)
+        curses.init_pair(1, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(2, curses.COLOR_YELLOW, -1)
 
         # read configuration file
         config_dir = config_path
@@ -37,8 +38,11 @@ class Reader:
 
         self.config = Config(config_file_path)
 
-        highlight_color = self.config.highlight_color
-        curses.init_color(curses.COLOR_RED, *highlight_color)
+        # override colors
+        if color := self.config.color("highlight_color"):
+            curses.init_color(curses.COLOR_MAGENTA, *color)
+        if color := self.config.color("highlight_color2"):
+            curses.init_color(curses.COLOR_YELLOW, *color)
 
         self.cache_dir = self.config.get("cache_dir")
         if self.cache_dir is None:
@@ -148,7 +152,7 @@ class Reader:
             return
 
         formatting = curses.color_pair(1) | curses.A_BOLD
-        formatting_current = formatting | curses.A_REVERSE
+        formatting_current = curses.color_pair(2) | curses.A_REVERSE
 
         for highlight_idx, data in enumerate(self.highlights):
             (row, col), other_lines = data

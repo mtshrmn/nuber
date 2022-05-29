@@ -28,12 +28,11 @@ class Config:
     def get(self, key: str, default: Any | T = None) -> Any | T:
         return self._config.get(key, default)
 
-    @property
-    def highlight_color(self) -> tuple[int, int, int]:
-        default_hex = "#ff000"
-        hex = self.get("highlight_color", default_hex)
-        hex = hex.lstrip("#")
-        r = int(hex[:2], 16) * 1000 // 256
-        g = int(hex[2:4], 16) * 1000 // 256
-        b = int(hex[4:6], 16) * 1000 // 256
-        return r, g, b
+    def color(self, color: str) -> tuple[int, int, int] | None:
+        if val := self.get(color, None):
+            val = val.lstrip("#")
+            r = int(val[:2], 16) * 1000 // 256
+            g = int(val[2:4], 16) * 1000 // 256
+            b = int(val[4:6], 16) * 1000 // 256
+            return r, g, b
+        return None
