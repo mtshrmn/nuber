@@ -252,6 +252,7 @@ class Reader:
             self.book.set_current_chapter(self.chapter_idx)
             self.render_chapter(canvas)
             self.update_offset()
+            self.update_progress()
             self.redraw(canvas)
         elif action == "resize":
             self.action_resize(canvas)
