@@ -309,6 +309,9 @@ class Reader:
 
         self.highlights = self.book.highlight_query_in_current_chapter(query)
         self.highlights_index = 0
+        if not self.highlights:
+            self.redraw(canvas)
+            return
         self.highlight_query()
         self.action_jump_to_highlight(canvas)
 
