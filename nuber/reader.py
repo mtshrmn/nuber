@@ -57,6 +57,8 @@ class Reader:
         self.placements = {}
         self.current_chapter_placements = []
         self.word_count_per_line = []
+        self.highlights = []
+        self.highlights_index = 0
         self.bookmarks = Bookmark(self.stdscr, keybinds=self.config.keybinds("bookmarks_keybinds"))
 
         if os.path.exists(self.state_file):
@@ -141,6 +143,28 @@ class Reader:
     def update_progress(self) -> None:
         self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
 
+    def highlight_query(self) -> None:
+        if not self.highlights:
+            return
+
+        formatting = curses.color_pair(1) | curses.A_BOLD
+        formatting_current = formatting | curses.A_REVERSE
+
+        for highlight_idx, data in enumerate(self.highlights):
+            (row, col), other_lines = data
+            for row_offset, chars_len in enumerate(other_lines):
+                # only on the first line start from `col`
+                # every other line should be from the start
+                start_col = 0 if row_offset else col
+                f = formatting_current if highlight_idx == self.highlights_index else formatting
+                self.pad.chgat(row + row_offset, start_col, chars_len, f)
+
+    def action_jump_to_highlight(self, canvas: ueberzug.Canvas) -> None:
+        (current_row, _), _ = self.highlights[self.highlights_index]
+        row_padding = self.rows // 3
+        target = current_row - row_padding
+        self.action_scroll_to(canvas, target=target)
+
     @staticmethod
     def action_noop(_: ueberzug.Canvas) -> None:
         pass
@@ -185,6 +209,8 @@ class Reader:
 
     def action_next_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.next_chapter():
+            self.highlights = []
+            self.highlights_index = 0
             self.positions[self.chapter_idx] = self.current_position
             self.chapter_idx += 1
             self.clear(canvas)
@@ -197,6 +223,8 @@ class Reader:
 
     def action_previous_chapter(self, canvas: ueberzug.Canvas) -> None:
         if self.book.previous_chapter():
+            self.highlights = []
+            self.highlights_index = 0
             self.positions[self.chapter_idx] = self.current_position
             self.progress -= self.offset + self.lines[self.chapter_idx - 2]
             self.chapter_idx -= 1
@@ -270,22 +298,30 @@ class Reader:
         self.render_chapter(canvas)
         self.redraw(canvas)
         query = self.cmdline.run(prompt="/")
-        if len(query) >= 1:
-            if data := self.book.highlight_query_in_current_chapter(query):
-                (row, col), other_lines = data
-                focus_padding = self.rows // 3
-                target = row - focus_padding
-                self.action_scroll_to(canvas, target=target)
-                for row_offset, chars_len in enumerate(other_lines):
-                    # only on the first line start from `col`
-                    # every other line should be from the start
-                    start_col = 0 if row_offset else col
-                    formatting = curses.color_pair(1) | curses.A_BOLD
-                    self.pad.chgat(row + row_offset, start_col, chars_len, formatting)
-            else:
-                # TODO: add indication for failure finding query
-                pass
-        self.redraw(canvas)
+        if len(query) < 1:
+            self.redraw(canvas)
+            return
+
+        self.highlights = self.book.highlight_query_in_current_chapter(query)
+        self.highlights_index = 0
+        self.highlight_query()
+        self.action_jump_to_highlight(canvas)
+
+    def action_next_search(self, canvas: ueberzug.Canvas) -> None:
+        if not self.highlights:
+            return
+        # modulu add 1 to the index
+        self.highlights_index = (self.highlights_index + 1) % len(self.highlights)
+        self.highlight_query()
+        self.action_jump_to_highlight(canvas)
+
+    def action_prev_search(self, canvas: ueberzug.Canvas) -> None:
+        if not self.highlights:
+            return
+        # modulu add -1 to the index
+        self.highlights_index = (self.highlights_index - 1) % len(self.highlights)
+        self.highlight_query()
+        self.action_jump_to_highlight(canvas)
 
     def action_quit(self, _) -> None:
         self.positions[self.chapter_idx] = self.current_position
@@ -306,6 +342,8 @@ class Reader:
         exit(0)
 
     def action_resize(self, canvas: ueberzug.Canvas) -> None:
+        self.highlights_index = 0
+        self.highlights = []
         self.clear(canvas)
         self.book.update_term_info()
         self.rows, self.cols = self.stdscr.getmaxyx()
@@ -329,6 +367,8 @@ class Reader:
                 ord("/"): self.action_open_search,
                 ord("B"): self.action_open_bookmarks,
                 ord("b"): self.action_add_bookmark,
+                ord("n"): self.action_next_search,
+                ord("N"): self.action_prev_search,
                 curses.KEY_RESIZE: self.action_resize,
                 }
 

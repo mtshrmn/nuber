@@ -24,6 +24,10 @@ pub struct Book {
     term_info: TermSize,
 }
 
+type Head = (usize, usize);
+type LinesLengths = Vec<usize>;
+type Highlight = (Head, LinesLengths);
+
 #[pymethods]
 impl Book {
     #[new]
@@ -142,18 +146,17 @@ impl Book {
     fn highlight_query_in_current_chapter(
         &mut self,
         query: &str,
-    ) -> Option<((usize, usize), Vec<usize>)> {
+    ) -> Vec<Highlight> {
+        let mut matches = Vec::new();
         let (text, lines_len) = self.render_current_chapter_text();
-        if let Some(b_idx) = text.find(query) {
-            // text.find() returns the byte index,
-            // however we want to get the char index
-            let mut col_idx = text[..b_idx].chars().count();
+        for (idx, _) in text.match_indices(query).clone() {
+            let mut col_idx = text[..idx].chars().count();
             let mut row_idx = 0;
-            for line_len in lines_len.clone() {
+            for (idx, line_len) in lines_len.clone().into_iter().enumerate() {
                 if col_idx < line_len {
+                    row_idx = idx;
                     break;
                 }
-                row_idx += 1;
                 col_idx -= line_len;
             }
             let first_char = (row_idx, col_idx);
@@ -163,7 +166,7 @@ impl Book {
             // specified number of characters to highlight.
             // the highlight in the first line starts from `col_idx`
             // in the rest (if exist) of the lines - start from 0.
-            let mut lines_len_iter = lines_len.into_iter().skip(row_idx);
+            let mut lines_len_iter = lines_len.clone().into_iter().skip(row_idx);
             let first_line_len = lines_len_iter.next().unwrap();
             // because the first line is special, we will treat it
             // first and then iterate over the rest.
@@ -183,10 +186,9 @@ impl Book {
                 highlights.push(line_len);
                 query_len = query_len.saturating_sub(line_len);
             }
-            Some((first_char, highlights))
-        } else {
-            None
+            matches.push((first_char, highlights));
         }
+        matches
     }
 
     fn render_current_chapter(&mut self) -> Vec<Vec<Element>> {
