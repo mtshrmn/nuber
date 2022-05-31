@@ -2,7 +2,10 @@
 
 Inspired by [epy](https://github.com/wustho/epy), *nuber* is an Epub terminal reader with inline images written with Rust and Python using [Überzug](https://github.com/seebye/ueberzug).
 
-![title](screenshot.png)
+## Demo
+
+https://user-images.githubusercontent.com/18540571/171234596-08050407-6ee1-45b3-868b-e315de1e7190.mp4
+
 
 ### Features
  - Display images in terminal.
