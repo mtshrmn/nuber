@@ -292,7 +292,7 @@ class Reader:
 
         tokens = command.split()
         if len(tokens) > 2 and tokens[0] == "bookmark" and tokens[1] == "add":
-            if label := "".join(tokens[2:]):
+            if label := " ".join(tokens[2:]):
                 position = self.chapter_idx, self.current_position
                 self.bookmarks.add_bookmark(label, position)
         # TODO: add indication for unkown command
