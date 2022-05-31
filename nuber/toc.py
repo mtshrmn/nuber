@@ -2,9 +2,10 @@ import curses
 from .listview import ListView
 
 class Toc(ListView):
-    def __init__(self, stdscr: curses.window, toc: list[tuple[str, int]], keybinds={}) -> None:
+    def __init__(self, stdscr: curses.window, toc: list[tuple[str, int]], keybinds: dict | None = None) -> None:
         keys = {ord("t"): "close_view"}
-        keys.update(keybinds)
+        if keybinds is not None:
+            keys.update(keybinds)
         super().__init__(stdscr, toc, keybinds=keys)
         self.title = "Table of Contents"
 

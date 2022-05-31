@@ -2,12 +2,13 @@ import curses
 from .listview import ListView
 
 class Bookmark(ListView):
-    def __init__(self, stdscr: curses.window, keybinds={}) -> None:
+    def __init__(self, stdscr: curses.window, keybinds: dict | None = None) -> None:
         keys = {
                 ord("B"): "close_view",
                 ord("d"): "delete_bookmark",
                 }
-        keys.update(keybinds)
+        if keybinds is not None:
+            keys.update(keybinds)
         super().__init__(stdscr, [], keybinds=keys)
         self.title = "Bookmarks"
 
@@ -55,5 +56,5 @@ class Confirmation(ListView):
         self.title = f"Delete bookmark \"{item}\"?"
         _, cols = self.stdscr.getmaxyx()
         max_size = cols - 3 * self.padding - 1
-        if len(self.title) > max_size: 
+        if len(self.title) > max_size:
             self.title = self.title[:max_size - 5] + "...\"?"
