@@ -303,12 +303,12 @@ class Reader:
         # clear previous search, probably the slowest solution
         self.render_chapter(canvas)
         self.redraw(canvas)
-        query = self.cmdline.run(prompt="/")
-        if len(query) < 1:
+        self.query = self.cmdline.run(prompt="/")
+        if len(self.query) < 1:
             self.redraw(canvas)
             return
 
-        self.highlights = self.book.highlight_query_in_current_chapter(query)
+        self.highlights = self.book.highlight_query_in_current_chapter(self.query)
         self.highlights_index = 0
         if not self.highlights:
             self.redraw(canvas)
@@ -351,8 +351,6 @@ class Reader:
         exit(0)
 
     def action_resize(self, canvas: ueberzug.Canvas) -> None:
-        self.highlights_index = 0
-        self.highlights = []
         self.clear(canvas)
         self.book.update_term_info()
         self.rows, self.cols = self.stdscr.getmaxyx()
@@ -360,6 +358,8 @@ class Reader:
         self.update_progress()
         self.render_chapter(canvas)
         self.update_offset()
+        self.highlights = self.book.highlight_query_in_current_chapter(self.query)
+        self.highlight_query()
         self.redraw(canvas)
 
     def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
