@@ -409,10 +409,10 @@ class Reader:
             self.offset = offset
         self.pad.refresh(self.offset, 0, 0, 0, self.rows - 1, self.cols - 1)
 
-        if self.lines <= 0:
+        if (lines_sum := sum(self.lines)) <= 0:
           percentage_str = "100%"
         else:
-          percentage_str = f"{self.progress * 100 // sum(self.lines)}%"
+          percentage_str = f"{self.progress * 100 // lines_sum}%"
 
         self.percentage_win.addstr(0, 4 - len(percentage_str), percentage_str, curses.A_BOLD)
         self.percentage_win.refresh()
