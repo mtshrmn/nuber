@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 mod book;
+mod deunicode;
 mod image;
 mod parser;
 use crate::book::Book;

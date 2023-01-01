@@ -1,3 +1,4 @@
+use crate::deunicode::Deunicode;
 use crate::parser::{Converter, Decorator, Element, RichConverter, Style};
 use epub::doc::EpubDoc;
 use html2text::parse;
@@ -148,14 +149,13 @@ impl Book {
         (text, lines_len)
     }
 
-    fn highlight_query_in_current_chapter(
-        &mut self,
-        query: &str,
-    ) -> Vec<Highlight> {
+    fn highlight_query_in_current_chapter(&mut self, query: &str) -> Vec<Highlight> {
         let mut matches = Vec::new();
         let (text, lines_len) = self.render_current_chapter_text();
-        for (idx, _) in text.match_indices(query).clone() {
-            let mut col_idx = text[..idx].chars().count();
+        let deunicoded_text = Deunicode::from(text.as_str());
+        for range in deunicoded_text.match_indices(|s| s.to_lowercase(), query) {
+            let start = range.start;
+            let mut col_idx = range.start;
             let mut row_idx = 0;
             for (idx, line_len) in lines_len.clone().into_iter().enumerate() {
                 if col_idx < line_len {
@@ -165,7 +165,7 @@ impl Book {
                 col_idx -= line_len;
             }
             let first_char = (row_idx, col_idx);
-            let mut query_len = query.len();
+            let mut query_len = range.end - start;
             // create a vec of following lines after the first match
             // each index is the next line with the
             // specified number of characters to highlight.
