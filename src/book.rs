@@ -88,7 +88,12 @@ impl Book {
         self.book
             .toc
             .iter()
-            .map(|p| (p.label.clone(), self.book.resource_uri_to_chapter(&p.content)))
+            .map(|p| {
+                (
+                    p.label.clone(),
+                    self.book.resource_uri_to_chapter(&p.content),
+                )
+            })
             .filter(|(_, n)| n.is_some())
             .map(|(l, n)| (l, n.unwrap()))
             .collect()

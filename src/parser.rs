@@ -121,7 +121,9 @@ pub trait Converter<A> {
 }
 
 fn ceil(x: u32, y: u32) -> u32 {
-    x.saturating_add(y.saturating_sub(1)).checked_div(y).unwrap_or(0)
+    x.saturating_add(y.saturating_sub(1))
+        .checked_div(y)
+        .unwrap_or(0)
 }
 
 pub struct RichConverter;
