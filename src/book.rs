@@ -151,6 +151,9 @@ impl Book {
 
     fn highlight_query_in_current_chapter(&mut self, query: &str) -> Vec<Highlight> {
         let mut matches = Vec::new();
+        if query.is_empty() {
+            return matches;
+        }
         let (text, lines_len) = self.render_current_chapter_text();
         let deunicoded_text = Deunicode::from(text.as_str());
         for range in deunicoded_text.match_indices(|s| s.to_lowercase(), query) {
