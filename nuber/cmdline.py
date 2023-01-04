@@ -33,11 +33,12 @@ class CmdLine:
                 27: self.action_close,                          # escape
                 curses.KEY_RESIZE: self.action_resize,
                 }
-        action = keys.get(key)
-        if action:
-            action()
-        else:
+
+        def append_char():
             self.command += chr(key)
+
+        action = keys.get(key, append_char)
+        action()
 
     def crop_text(self, text):
         if len(text) + 1 < self.cols:

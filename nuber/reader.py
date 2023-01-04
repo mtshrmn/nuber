@@ -26,12 +26,11 @@ class Reader:
         curses.init_pair(2, curses.COLOR_YELLOW, -1)
 
         # read configuration file
-        config_dir = config_path
         if config_path == None:
-            config_dir = os.path.join(appdirs.user_config_dir(), "nuber")
-        if not os.path.exists(config_dir):
-            os.mkdir(config_dir)
-        config_file_path = os.path.join(config_dir, "config.toml")
+            config_path = os.path.join(appdirs.user_config_dir(), "nuber")
+        if not os.path.exists(config_path):
+            os.mkdir(config_path)
+        config_file_path = os.path.join(config_path, "config.toml")
         if not os.path.exists(config_file_path):
             with open(config_file_path, "x"):
                 pass

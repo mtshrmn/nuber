@@ -123,7 +123,7 @@ impl Book {
 
     // returns single string with pure text and line lengths
     // TODO: rename function
-    fn render_current_chapter_text(&mut self) -> (String, Vec<usize>) {
+    fn render_current_chapter_text(&mut self) -> (String, LinesLengths) {
         let mut lines_len = Vec::new();
         let mut text = String::new();
         let temp_dir = self.temp_dir.path().to_owned();
@@ -149,7 +149,7 @@ impl Book {
         (text, lines_len)
     }
 
-    fn highlight_query_in_current_chapter(&mut self, query: &str) -> Vec<Highlight> {
+    fn highlight_query_in_current_chapter(&mut self, query: String) -> Vec<Highlight> {
         let mut matches = Vec::new();
         if query.is_empty() {
             return matches;

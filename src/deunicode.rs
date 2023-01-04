@@ -35,12 +35,12 @@ impl Deunicode {
             .map(|(i, _)| i)
     }
 
-    pub fn match_indices<F>(&self, f: F, text: &str) -> Vec<Range>
+    pub fn match_indices<F>(&self, f: F, text: String) -> Vec<Range>
     where
         F: Fn(&str) -> String,
     {
         let filtered_deunicoded = f(self.deunicoded.as_str());
-        let filtered_text = f(text);
+        let filtered_text = f(text.as_str());
         filtered_deunicoded
             .match_indices(&filtered_text)
             .map(|(idx, s)| {
