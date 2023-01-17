@@ -80,6 +80,30 @@ class Reader:
         self.toc = Toc(self.stdscr, self.book.get_toc(), keybinds=self.config.keybinds("toc_keybinds"))
         self.cmdline = CmdLine(self.stdscr)
 
+        # default keys
+        self.keys = {
+                ord("h"): self.action_previous_chapter,
+                ord("j"): self.action_scroll_down,
+                ord("k"): self.action_scroll_up,
+                ord("l"): self.action_next_chapter,
+                ord("q"): self.action_quit,
+                ord("G"): self.action_bottom,
+                ord("g"): self.action_top,
+                ord("t"): self.action_open_toc,
+                ord(":"): self.action_open_cmd,
+                ord("/"): self.action_open_search,
+                ord("B"): self.action_open_bookmarks,
+                ord("b"): self.action_add_bookmark,
+                ord("n"): self.action_next_search,
+                ord("N"): self.action_prev_search,
+                curses.KEY_RESIZE: self.action_resize,
+                }
+
+        # update keys from config file 
+        reader_keybinds = self.config.keybinds("reader_keybinds").items()
+        custom_keys = {k: getattr(self, f"action_{v}", self.action_noop) for k, v, in reader_keybinds}
+        self.keys.update(custom_keys)
+
     def add_image(self, canvas: ueberzug.Canvas, position: tuple[int, int], info: Image) -> None:
         img_id = f"{position[0]}{position[1]}{info.path}"
         if img_id in self.placements:
@@ -362,28 +386,7 @@ class Reader:
         self.redraw(canvas)
 
     def on_key(self, key: int, canvas: ueberzug.Canvas) -> None:
-        keys = {
-                ord("h"): self.action_previous_chapter,
-                ord("j"): self.action_scroll_down,
-                ord("k"): self.action_scroll_up,
-                ord("l"): self.action_next_chapter,
-                ord("q"): self.action_quit,
-                ord("G"): self.action_bottom,
-                ord("g"): self.action_top,
-                ord("t"): self.action_open_toc,
-                ord(":"): self.action_open_cmd,
-                ord("/"): self.action_open_search,
-                ord("B"): self.action_open_bookmarks,
-                ord("b"): self.action_add_bookmark,
-                ord("n"): self.action_next_search,
-                ord("N"): self.action_prev_search,
-                curses.KEY_RESIZE: self.action_resize,
-                }
-
-        reader_keybinds = self.config.keybinds("reader_keybinds").items()
-        custom_keys = {k: getattr(self, f"action_{v}", self.action_noop) for k, v, in reader_keybinds}
-        keys.update(custom_keys)
-        action = keys.get(key, self.action_noop)
+        action = self.keys.get(key, self.action_noop)
         action(canvas)
 
     def clear(self, canvas: ueberzug.Canvas) -> None:

@@ -6,6 +6,17 @@ class CmdLine:
         self.command = ""
         self.prompt = prompt
 
+        self.keys = {
+                10: self.action_select,                         # key_enter
+                13: self.action_select,                         # key_enter
+                curses.KEY_ENTER: self.action_select,
+                8: self.action_backspace,                       # backspace
+                127: self.action_backspace,                     # backspace
+                curses.KEY_BACKSPACE: self.action_backspace,
+                27: self.action_close,                          # escape
+                curses.KEY_RESIZE: self.action_resize,
+                }
+
     def action_select(self) -> None:
         self.focused = False
 
@@ -23,21 +34,10 @@ class CmdLine:
         self.focused = False
 
     def on_key(self, key: int) -> None:
-        keys = {
-                10: self.action_select,                         # key_enter
-                13: self.action_select,                         # key_enter
-                curses.KEY_ENTER: self.action_select,
-                8: self.action_backspace,                       # backspace
-                127: self.action_backspace,                     # backspace
-                curses.KEY_BACKSPACE: self.action_backspace,
-                27: self.action_close,                          # escape
-                curses.KEY_RESIZE: self.action_resize,
-                }
-
         def append_char():
             self.command += chr(key)
 
-        action = keys.get(key, append_char)
+        action = self.keys.get(key, append_char)
         action()
 
     def crop_text(self, text):

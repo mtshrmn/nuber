@@ -8,7 +8,7 @@ class ListView:
         # settings
         self.padding = 3
         self.title = "title"
-        self.keys = {k: getattr(self, f"action_{v}", self.action_noop) for k, v in keybinds.items()}
+        custom_keys = {k: getattr(self, f"action_{v}", self.action_noop) for k, v in keybinds.items()}
 
         # context
         self.stdscr = stdscr
@@ -19,6 +19,19 @@ class ListView:
         self.selected_row = 0
         self.action = ""
         self.y_offset = 0
+        
+        # keys
+        self.keys = {
+                ord("q"): self.action_quit,
+                ord("j"): self.action_next,
+                ord("k"): self.action_previous,
+                ord("o"): self.action_select,
+                10: self.action_select,                 # key_enter
+                13: self.action_select,                 # key_enter
+                curses.KEY_ENTER: self.action_select,   # key_enter
+                curses.KEY_RESIZE: self.action_resize,
+                }
+        self.keys.update(custom_keys)
 
     def action_noop(self) -> None:
         pass
@@ -55,18 +68,7 @@ class ListView:
         self.focused = False
 
     def on_key(self, key: int) -> None:
-        keys = {
-                ord("q"): self.action_quit,
-                ord("j"): self.action_next,
-                ord("k"): self.action_previous,
-                ord("o"): self.action_select,
-                10: self.action_select,                 # key_enter
-                13: self.action_select,                 # key_enter
-                curses.KEY_ENTER: self.action_select,   # key_enter
-                curses.KEY_RESIZE: self.action_resize,
-                }
-        keys.update(self.keys)
-        action = keys.get(key, self.action_noop)
+        action = self.keys.get(key, self.action_noop)
         action()
 
     def redraw(self) -> None:
