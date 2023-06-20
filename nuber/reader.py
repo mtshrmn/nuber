@@ -53,6 +53,7 @@ class Reader:
         self.book = Book(self.path)
         self.lines = self.book.number_of_lines()
 
+        self.query = ""
         self.offset = 0
         self.current_position = 0
         self.chapter_idx = 0
@@ -306,10 +307,10 @@ class Reader:
         self.action_open_cmd(canvas, command="bookmark add ")
 
     def action_open_cmd(self, canvas: ueberzug.Canvas, command="") -> None:
-        self.hide_current_placements(canvas)
-        command = self.cmdline.run(command=command)
+        self.hide_obstructing_placements(canvas)
+        action, command = self.cmdline.run(command=command)
         # system commands:
-        if command == "resize":
+        if action == "resize":
             self.action_resize(canvas)
             return
 
@@ -322,11 +323,13 @@ class Reader:
         self.redraw(canvas)
     
     def action_open_search(self, canvas: ueberzug.Canvas) -> None:
-        self.hide_current_placements(canvas)
+        self.hide_obstructing_placements(canvas)
         # clear previous search, probably the slowest solution
-        self.render_chapter(canvas)
-        self.redraw(canvas)
-        self.query = self.cmdline.run(prompt="/")
+        action, self.query = self.cmdline.run(prompt="/")
+        if action == "resize":
+            self.action_resize(canvas)
+            return
+
         if len(self.query) < 1:
             self.redraw(canvas)
             return
@@ -404,6 +407,12 @@ class Reader:
         with canvas.synchronous_lazy_drawing:
             for _, placement in self.current_chapter_placements:
                 placement.visibility = ueberzug.Visibility.INVISIBLE
+
+    def hide_obstructing_placements(self, canvas: ueberzug.Canvas) -> None:
+        with canvas.lazy_drawing:
+            for _, placement in self.current_chapter_placements:
+                if placement.y + placement.height + 1 >= self.rows:
+                    placement.visibility = ueberzug.Visibility.INVISIBLE;
 
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:

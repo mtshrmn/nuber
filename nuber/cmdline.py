@@ -1,10 +1,13 @@
 import curses
+from typing import Tuple
 
 class CmdLine:
     def __init__(self, stdscr: curses.window, prompt=":") -> None:
         self.stdscr = stdscr
         self.command = ""
+        self.action = ""
         self.prompt = prompt
+        self.focused = True
 
         self.keys = {
                 10: self.action_select,                         # key_enter
@@ -18,10 +21,11 @@ class CmdLine:
                 }
 
     def action_select(self) -> None:
+        self.action = "select"
         self.focused = False
 
     def action_close(self) -> None:
-        self.command = ""
+        self.action = "close"
         self.focused = False
 
     def action_backspace(self) -> None:
@@ -30,7 +34,7 @@ class CmdLine:
         self.command = self.command[:-1]
 
     def action_resize(self) -> None:
-        self.command = "resize"
+        self.action = "resize"
         self.focused = False
 
     def on_key(self, key: int) -> None:
@@ -46,6 +50,8 @@ class CmdLine:
         return text[1 - self.cols + 1:]
 
     def redraw(self) -> None:
+        if self.focused == False:
+            return
         self.input.clear()
         self.input.addch(0, 0, self.prompt, curses.A_REVERSE)
         # purely for cosmetic reasons
@@ -53,18 +59,18 @@ class CmdLine:
         self.input.addstr(0, 1, self.crop_text(self.command), curses.A_REVERSE)
         self.input.refresh()
 
-    def run(self, command="", prompt=":") -> str:
+    def run(self, command="", prompt=":") -> Tuple[str, str]:
         self.prompt = prompt
         self.rows, self.cols = self.stdscr.getmaxyx()
         self.command = command
         self.input = curses.newwin(1, self.cols + 1, self.rows - 1, 0)
         self.input.keypad(True)
-        self.redraw()
         self.focused = True
+        self.redraw()
 
         while self.focused:
             ch = self.input.getch()
             self.on_key(ch)
             self.redraw()
-        return self.command
+        return self.action, self.command
 
