@@ -169,7 +169,7 @@ impl<'a> Decorator<'a> {
         let path = Path::new(url);
         let data = path.file_name().and_then(|fname| {
             let full_path = Path::new(self.root_dir).join(fname);
-            if let Ok(dimensions) = image::image_dimensions(full_path.clone()) {
+            if let Ok(dimensions) = image::image_dimensions(&full_path) {
                 Some((dimensions, full_path))
             } else {
                 None

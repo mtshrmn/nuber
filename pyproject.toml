@@ -4,12 +4,15 @@ dependencies = ["ueberzug>=18.1.9", "appdirs>=1.4.4", "click>=8.0.1"]
 
 [tool.poetry]
 name = "nuber"
-version = "1.1.1"
+version = "1.1.2"
 description = "epub terminal reader with inline images"
 authors = ["Moshe Sherman <mtshrmn@gmail.com>"]
 
+[tool.maturin]
+module-name = "nuber.rust_module.nuber"
+
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.11"
 ueberzug = "^18.1.9"
 appdirs = "^1.4.4"
 click = "^8.0.1"

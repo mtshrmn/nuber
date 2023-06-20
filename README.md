@@ -16,8 +16,16 @@ https://user-images.githubusercontent.com/18540571/171234596-08050407-6ee1-45b3-
  - Rememebers last position per book.
 
 ### Installation
+**Note:** currently, there is no option to download `ueberzug` using pip.
+Until it is added back to [pypi](https://pypi.org), please install it manualy:
+
+Requirements: `maturin`, `poetry`, `ueberzug`
 ```sh
-$ pip install nuber
+$ git clone https://github.com/mtshrmn/nuber.git --recursive && cd nuber
+$ cd rust-html2text && git apply ../html2text.patch && cd ..
+$ poetry run maturin build --release
+$ poetry build
+$ pipx install . --system-site-packages
 ```
 
 ### Usage
@@ -86,7 +94,6 @@ Requirements: `maturin`, `poetry`
 ```sh
 $ git clone https://github.com/mtshrmn/nuber.git --recursive && cd nuber
 $ cd rust-html2text && git apply ../html2text.patch && cd ..
-$ poetry install && poetry shell
-$ maturin develop && exit
+$ poetry run maturin develop
 $ poetry run nuber
 ```

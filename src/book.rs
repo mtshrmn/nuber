@@ -6,6 +6,7 @@ use html2text::render::text_renderer::TaggedLineElement;
 use libc::{c_ushort, ioctl, STDOUT_FILENO, TIOCGWINSZ};
 use pyo3::prelude::*;
 use std::fs::{write, File};
+use std::io::BufReader;
 use std::mem;
 use tempfile::{tempdir, TempDir};
 
@@ -20,7 +21,7 @@ pub struct TermSize {
 
 #[pyclass]
 pub struct Book {
-    book: EpubDoc<File>,
+    book: EpubDoc<BufReader<File>>,
     temp_dir: TempDir,
     term_info: TermSize,
 }
