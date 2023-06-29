@@ -122,6 +122,8 @@ class Reader:
         self.chapter_rows = max(self.rows, len(chapter))
         self.pad: curses.window = curses.newpad(self.chapter_rows, self.cols)
         self.percentage_win = curses.newwin(1, 10, 0, self.cols - 4)
+        self.highlights_win: curses.window | None = None
+        # appears when searching
         self.word_count_per_line = []
         for line_num, elements in enumerate(chapter):
             current_pos = 0
@@ -135,6 +137,17 @@ class Reader:
                     current_pos += self.addstr(line_num, current_pos, element.text, element.style)
                 word_count += len(element.text.split())
             self.word_count_per_line.append(max(1, word_count))
+
+    def redraw_text_formatting(self) -> None:
+        chapter = self.book.render_current_chapter()
+        for line_num, elements in enumerate(chapter):
+            current_pos = 0
+            word_count = 0
+            for element in elements:
+                if not element.image_info:
+                    current_pos += self.addstr(line_num, current_pos, element.text, element.style)
+                word_count += len(element.text.split())
+
 
     def determine_visibility(self, y: int, h: int) -> ueberzug.Visibility:
         y_pos = y - self.offset
@@ -172,6 +185,7 @@ class Reader:
         self.progress = sum(self.lines[:max(0, self.chapter_idx - 1)]) + self.offset + self.rows
 
     def highlight_query(self) -> None:
+        self.redraw_text_formatting()
         if not self.highlights:
             return
 
@@ -247,6 +261,8 @@ class Reader:
             self.progress -= self.offset
             self.update_offset()
             self.progress += self.lines[self.chapter_idx - 2] + self.offset
+            self.query = ""
+            self.hide_highlights_counter_window()
             self.redraw(canvas)
 
     def action_previous_chapter(self, canvas: ueberzug.Canvas) -> None:
@@ -261,6 +277,8 @@ class Reader:
             self.render_chapter(canvas)
             self.update_offset()
             self.progress += self.offset
+            self.query = ""
+            self.hide_highlights_counter_window()
             self.redraw(canvas)
 
     def action_open_toc(self, canvas: ueberzug.Canvas) -> None:
@@ -331,12 +349,14 @@ class Reader:
             return
 
         if len(self.query) < 1:
+            self.redraw_text_formatting()
             self.redraw(canvas)
             return
 
         self.highlights = self.book.highlight_query_in_current_chapter(self.query)
         self.highlights_index = 0
         if not self.highlights:
+            self.highlight_query()
             self.redraw(canvas)
             return
         self.highlight_query()
@@ -396,6 +416,8 @@ class Reader:
         try:
             self.pad.clear()
             self.percentage_win.clear()
+            if self.highlights_win:
+                self.highlights_win.clear()
             with canvas.synchronous_lazy_drawing:
                 for _, placement in self.current_chapter_placements:
                     placement.visibility = ueberzug.Visibility.INVISIBLE
@@ -414,6 +436,10 @@ class Reader:
                 if placement.y + placement.height + 1 >= self.rows:
                     placement.visibility = ueberzug.Visibility.INVISIBLE;
 
+    def hide_highlights_counter_window(self) -> None:
+        if self.highlights_win:
+            del self.highlights_win
+            self.highlights_win = None
 
     def redraw(self, canvas: ueberzug.Canvas) -> None:
         if self.offset > (offset := self.chapter_rows - self.rows):
@@ -427,6 +453,19 @@ class Reader:
 
         self.percentage_win.addstr(0, 4 - len(percentage_str), percentage_str, curses.A_BOLD)
         self.percentage_win.refresh()
+
+        if not self.query:
+            self.hide_highlights_counter_window()
+        else:
+            # calculate the human legible index
+            highlight_index = self.highlights_index + 1 if self.highlights else 0
+            highlights_str = f"{highlight_index}/{len(self.highlights)}"
+            win_y = self.rows - 1
+            win_x = self.cols - len(highlights_str)
+            self.highlights_win = curses.newwin(1, len(highlights_str) + 1, win_y, win_x)
+            self.highlights_win.addstr(0, 0, highlights_str, curses.A_BOLD | curses.A_REVERSE)
+            self.highlights_win.refresh()
+
         with canvas.synchronous_lazy_drawing:
             for initial_y, placement in self.current_chapter_placements:
                 visibility = self.determine_visibility(initial_y, placement.height)
