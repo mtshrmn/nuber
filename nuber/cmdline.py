@@ -18,6 +18,7 @@ class CmdLine:
                 curses.KEY_BACKSPACE: self.action_backspace,
                 27: self.action_close,                          # escape
                 curses.KEY_RESIZE: self.action_resize,
+                "\n": self.action_select,
                 }
 
     def action_select(self) -> None:
@@ -37,9 +38,10 @@ class CmdLine:
         self.action = "resize"
         self.focused = False
 
-    def on_key(self, key: int) -> None:
+    def on_key(self, key: int | str) -> None:
         def append_char():
-            self.command += chr(key)
+            if isinstance(key, str):
+                self.command += key
 
         action = self.keys.get(key, append_char)
         action()
@@ -69,7 +71,7 @@ class CmdLine:
         self.redraw()
 
         while self.focused:
-            ch = self.input.getch()
+            ch = self.input.get_wch()
             self.on_key(ch)
             self.redraw()
         return self.action, self.command
